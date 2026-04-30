@@ -15,8 +15,7 @@
   -->
 
 <template>
-	<input :id="`server-${server.id}`" type="radio" name="server" v-bind:value="server.id" v-model="currentServer">
-	<label :for="`server-${server.id}`">{{ server.label || server.id }}</label>
+	<v-list-item :active="isActive" @click="selectServer" :title="server.label || server.id" />
 </template>
 
 <script lang="ts">
@@ -34,15 +33,17 @@ export default defineComponent({
 		}
 	},
 
-	setup() {
+	setup(props) {
 		const store = useStore(),
-			currentServer = computed({
-				get: () => store.state.currentServer ? store.state.currentServer.id : undefined,
-				set: (value) => value && store.commit(MutationTypes.SET_CURRENT_SERVER, value)
-			})
+			isActive = computed(() => store.state.currentServer?.id === props.server.id);
+
+		const selectServer = () => {
+			store.commit(MutationTypes.SET_CURRENT_SERVER, props.server.id);
+		};
 
 		return {
-			currentServer,
+			isActive,
+			selectServer,
 		}
 	}
 });

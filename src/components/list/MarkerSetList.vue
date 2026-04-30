@@ -15,21 +15,18 @@
   -->
 
 <template>
-	<RadioList ref="list" v-if="!currentSet" name="marker-set" :aria-labelledby="ariaLabelledby">
-		<template v-for="[id, markerSet] in markerSets" :key="id">
-			<input :id="`marker-set-${id}`" type="radio" name="marker-set" v-model="currentSet" v-bind:value="markerSet">
-			<label :for="`marker-set-${id}`">
-				<span>{{ markerSet.label || id }}</span>
-				<span>{{ markerCounts.get(markerSet) }} Marker(s)</span>
-			</label>
-		</template>
-	</RadioList>
+	<v-list ref="list" v-if="!currentSet" density="compact" :aria-labelledby="ariaLabelledby">
+		<v-list-item v-for="[id, markerSet] in markerSets" :key="id" @click="currentSet = markerSet">
+			<v-list-item-title>{{ markerSet.label || id }}</v-list-item-title>
+			<v-list-item-subtitle>{{ markerCounts.get(markerSet) }} Marker(s)</v-list-item-subtitle>
+		</v-list-item>
+	</v-list>
 
 	<template v-else>
 		<div ref="subHeader" class="markers__header">
-			<button type="button" ref="backButton" class="markers__back" @click.prevent="currentSet = undefined">
-				<SvgIcon name="arrow"></SvgIcon>
-			</button>
+			<v-btn ref="backButton" icon variant="text" size="small" class="markers__back" @click.prevent="currentSet = undefined">
+				<SvgIcon name="arrow" />
+			</v-btn>
 			<h3 class="markers__set">{{ currentSet.label }}</h3>
 		</div>
 		<MarkerList ref="submenu" :marker-set="currentSet" @keydown="onSubmenuKeydown"></MarkerList>
@@ -41,7 +38,6 @@ import {ComponentPublicInstance, defineComponent, nextTick, onMounted, ref, onUn
 import {LiveAtlasMarkerSet} from "@/index";
 import {DynmapMarkerUpdate} from "@/dynmap";
 import {nonReactiveState} from "@/store/state";
-import RadioList from "@/components/util/RadioList.vue";
 import MarkerList from "@/components/list/MarkerList.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import {registerUpdateHandler, unregisterUpdateHandler} from "@/util/markers";
@@ -51,7 +47,6 @@ export default defineComponent({
 	components: {
 		SvgIcon,
 		MarkerList,
-		RadioList,
 	},
 
 	props: {
@@ -70,7 +65,7 @@ export default defineComponent({
 			currentSet = ref<LiveAtlasMarkerSet | undefined>(undefined),
 			list = ref<ComponentPublicInstance | null>(null),
 			subHeader = ref<HTMLElement | null>(null),
-			backButton = ref<HTMLButtonElement | null>(null);
+			backButton = ref<ComponentPublicInstance | null>(null);
 
 		const checkSets = () => {
 			props.markerSets?.forEach((set) => checkSet(set));
@@ -98,9 +93,11 @@ export default defineComponent({
 			let focusTarget;
 
 			if(newValue) {
-				focusTarget = subHeader.value!.parentNode!.querySelector('.menu input') || backButton.value;
-			} else if(oldValue) {
-				focusTarget = list.value!.$el.parentNode.querySelector(`[id="marker-set-${oldValue.id}"]`);
+				const parent = subHeader.value?.parentNode;
+				focusTarget = parent?.querySelector('.menu input, .v-list-item') || backButton.value?.$el;
+			} else if(oldValue && list.value) {
+				focusTarget = list.value.$el.querySelector(`[id="marker-set-${oldValue.id}"]`)
+					|| list.value.$el.querySelector('.v-list-item');
 			}
 
 			if(focusTarget) {
@@ -133,8 +130,6 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 	.markers__back {
-		width: 3.2rem;
-		height: 3.2rem;
 		flex-grow: 0;
 		margin-right: 1rem;
 		transform: rotate(90deg);

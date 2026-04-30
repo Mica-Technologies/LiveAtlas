@@ -18,18 +18,20 @@
 	<section class="sidebar__section following">
 		<h2>{{ heading }}</h2>
 
-		<div :class="{'following__target': true, 'following__target--hidden': target.hidden}">
-			<PlayerImage v-if="imagesEnabled" :player="target" class="target__icon" width="48" height="48"></PlayerImage>
-			<span class="target__name" v-html="target.displayName"></span>
-			<span class="target__status">{{ status }}</span>
-      <span class="target__location" v-clipboard:copy="location"
-            v-clipboard:success="copySuccess"
-            v-clipboard:error="copyError">{{ location }}&#8288;</span>
-			<button class="target__unfollow" type="button" :title="messageUnfollowTitle"
-				@click.prevent="unfollow" :aria-label="messageUnfollow">
-				<SvgIcon name="cross"></SvgIcon>
-			</button>
-		</div>
+		<v-card :class="{'following__target': true, 'following__target--hidden': target.hidden}" variant="tonal">
+			<div class="following__grid">
+				<PlayerImage v-if="imagesEnabled" :player="target" class="target__icon" width="48" height="48"></PlayerImage>
+				<span class="target__name" v-html="target.displayName"></span>
+				<span class="target__status">{{ status }}</span>
+				<span class="target__location" v-clipboard:copy="location"
+					v-clipboard:success="copySuccess"
+					v-clipboard:error="copyError">{{ location }}&#8288;</span>
+				<v-btn icon variant="text" size="x-small" class="target__unfollow"
+					:title="messageUnfollowTitle" @click.prevent="unfollow" :aria-label="messageUnfollow">
+					<SvgIcon name="cross" />
+				</v-btn>
+			</div>
+		</v-card>
 	</section>
 </template>
 
@@ -106,63 +108,55 @@ export default defineComponent({
 		z-index: 3;
 
 		.following__target {
+			background-color: transparent !important;
+			border: none !important;
+		}
+
+		.following__grid {
 			display: grid;
-			grid-template-columns: min-content 1fr;
-			grid-template-rows: 1fr min-content min-content min-content 1fr;
-			grid-template-areas: "icon ." "icon name" "icon status" "icon location" "icon .";
-			grid-auto-flow: column;
+			grid-template-columns: min-content 1fr min-content;
+			grid-template-rows: min-content min-content min-content;
+			grid-template-areas: "icon name unfollow" "icon status ." "icon location .";
 			align-items: center;
+			padding: 0.8rem;
+			gap: 0 0.8rem;
+		}
 
-			.target__unfollow {
-				position: absolute;
-				top: 1.5rem;
-				right: 1rem;
-				width: 2.5rem;
-				height: 2.5rem;
+		.target__unfollow {
+			grid-area: unfollow;
+			align-self: start;
+		}
 
-				&:before {
-					content: '';
-					position: absolute;
-					display: block;
-					top: -1rem;
-					right: -1rem;
-					bottom: -1rem;
-					left: -1rem;
-				}
-			}
+		.target__icon {
+			grid-area: icon;
+		}
 
+		.target__name {
+			grid-area: name;
+		}
+
+		.target__status {
+			grid-area: status;
+			font-size: 1.3rem;
+		}
+
+		.target__location {
+			grid-area: location;
+			font-family: monospace;
+			cursor: pointer;
+		}
+
+		&.following__target--hidden {
 			.target__icon {
-				margin-right: 2rem;
-				grid-area: icon;
+				filter: grayscale(1);
+				opacity: 0.5;
 			}
+		}
 
-			.target__name {
-				grid-area: name;
-			}
-
-			.target__status {
-				grid-area: status;
-				font-size: 1.3rem;
-			}
-
-			.target__location {
-				grid-area: location;
-				font-family: monospace;
-				cursor: pointer;
-			}
-
-			&.following__target--hidden {
-				.target__icon {
-					filter: grayscale(1);
-					opacity: 0.5;
-				}
-			}
-
-			> * {
-				text-overflow: ellipsis;
-				white-space: nowrap;
-				overflow: hidden;
-			}
+		.following__grid > * {
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			overflow: hidden;
 		}
 
 		@media (max-width: 480px), (max-height: 480px) {
