@@ -40,6 +40,8 @@ export class LinkControl extends Control {
 			copySuccess = clipboardSuccess(store),
 			copyError = clipboardError(store);
 
+		const embedBaseUrl = new URLSearchParams(window.location.search).get('embedBaseUrl');
+
 		linkButton.type = 'button';
 		linkButton.title = store.state.messages.linkTitle;
 		linkButton.innerHTML = `
@@ -49,7 +51,8 @@ export class LinkControl extends Control {
 
 		linkButton.addEventListener('click', e => {
 			e.preventDefault();
-			toClipboard(window.location.href.split("#")[0] + store.getters.url)
+			const base = embedBaseUrl || window.location.href.split("#")[0];
+			toClipboard(base + store.getters.url)
 				.then(copySuccess)
 				.catch(copyError)
 		});
