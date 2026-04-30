@@ -15,9 +15,10 @@
   -->
 
 <template>
-	<input ref="searchInput" v-if="search && unfilteredTotal" id="markers__search" class="section__search" type="text"
-         name="search" :value="searchQuery" :placeholder="messageMarkersSearchPlaceholder"
-         @keydown="(e: KeyboardEvent) => e.stopImmediatePropagation()" @input="onSearchInput">
+	<v-text-field ref="searchInput" v-if="search && unfilteredTotal" id="markers__search" class="section__search"
+		:model-value="searchQuery" :placeholder="messageMarkersSearchPlaceholder"
+		@keydown="(e: KeyboardEvent) => e.stopImmediatePropagation()" @update:model-value="onSearchInput"
+		hide-details single-line density="compact" variant="outlined" clearable />
 	<RadioList v-if="markers.size" name="marker" v-bind="$attrs" @keydown="onListKeydown">
 		<MarkerListItem v-for="[id, marker] in markers" :key="id" :marker="marker" :id="id"></MarkerListItem>
 		<button type="button" ref="showMoreButton" v-if="viewLimit < total" @click.prevent="showMore">{{ messageShowMore }}</button>
@@ -70,12 +71,12 @@ export default defineComponent({
 			total = ref(0),
 			unfilteredTotal = ref(0),
 			viewLimit = ref(50),
-			searchInput = ref<HTMLInputElement | null>(null);
+			searchInput = ref<InstanceType<typeof import('vuetify/components').VTextField> | null>(null);
 
 		const onListKeydown = (e: KeyboardEvent) => {
 			if(e.key === 'f' && e.ctrlKey) {
 				e.preventDefault();
-				searchInput.value!.focus();
+				searchInput.value?.focus();
 			}
 		}
 
@@ -107,7 +108,6 @@ export default defineComponent({
 		const showMore = () => {
 			const lastLabel = (showMoreButton.value as HTMLButtonElement).previousElementSibling as HTMLLabelElement;
 			viewLimit.value += 50;
-			//Focus first new list item
 			focusFrame = requestAnimationFrame(() => (lastLabel.nextElementSibling as HTMLInputElement).focus());
 		};
 
@@ -122,14 +122,17 @@ export default defineComponent({
 			}
 		};
 
-		const onSearchInput = (e: Event) => {
-			searchQuery.value = (e.target as HTMLInputElement).value.toLowerCase();
+		const onSearchInput = (value: string) => {
+			searchQuery.value = (value || '').toLowerCase();
 		};
 
 		const debouncedSearch = debounce(() => {
 			viewLimit.value = 50;
 			getMarkers();
-			searchInput.value!.nextElementSibling!.scrollIntoView();
+			const el = searchInput.value?.$el;
+			if (el && el.nextElementSibling) {
+				el.nextElementSibling.scrollIntoView();
+			}
 		}, 100);
 
 		getMarkers();

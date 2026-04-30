@@ -85,5 +85,33 @@ export const vuetify = createVuetify({
 		global: {
 			density: 'comfortable',
 		},
+		VBtn: {
+			variant: 'flat',
+			rounded: 'lg',
+		},
+		VTextField: {
+			variant: 'outlined',
+			density: 'compact',
+			color: 'primary',
+		},
+		VCard: {
+			rounded: 'lg',
+			variant: 'flat',
+		},
+		VDialog: {
+			scrim: 'black',
+		},
+		VAlert: {
+			variant: 'tonal',
+			density: 'compact',
+			rounded: 'lg',
+		},
+		VList: {
+			density: 'compact',
+			rounded: 'lg',
+		},
+		VListItem: {
+			rounded: 'lg',
+		},
 	},
 });

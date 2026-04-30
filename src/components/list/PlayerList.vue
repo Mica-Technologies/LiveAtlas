@@ -15,8 +15,9 @@
   -->
 
 <template>
-	<input ref="searchInput" v-if="filteredPlayers && search" class="section__search" type="text" name="search"
-         v-model="searchQuery" :placeholder="messagePlayersSearchPlaceholder" @keydown="onKeydown">
+	<v-text-field ref="searchInput" v-if="filteredPlayers && search" class="section__search"
+		v-model="searchQuery" :placeholder="messagePlayersSearchPlaceholder"
+		@keydown="onKeydown" hide-details single-line density="compact" variant="outlined" clearable />
 	<RadioList v-if="filteredPlayers.length" name="player" :aria-labelledby="ariaLabelledby">
 		<PlayerListItem v-for="player in filteredPlayers" :key="player.name" :player="player"></PlayerListItem>
 	</RadioList>
@@ -58,7 +59,7 @@ export default defineComponent({
 			messagePlayersSearchPlaceholder = computed(() => store.state.messages.playersSearchPlaceholder),
 
 			searchQuery = ref(""),
-			searchInput = ref<HTMLInputElement | null>(null),
+			searchInput = ref<InstanceType<typeof import('vuetify/components').VTextField> | null>(null),
 
 			filteredPlayers = computed(() => {
 				const query = searchQuery.value.toLowerCase();
@@ -72,7 +73,12 @@ export default defineComponent({
 				e.stopImmediatePropagation();
 			};
 
-		watch(searchQuery, () => searchInput.value!.nextElementSibling!.scrollIntoView());
+		watch(searchQuery, () => {
+			const el = searchInput.value?.$el;
+			if (el && el.nextElementSibling) {
+				el.nextElementSibling.scrollIntoView();
+			}
+		});
 
 		return {
 			messageSkeletonPlayers,

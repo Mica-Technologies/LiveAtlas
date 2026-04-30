@@ -1,0 +1,80 @@
+/*!
+ * Vuetify component overrides to match the Mica Technologies glass-effect aesthetic.
+ * Ensures Vuetify components use the same translucent backdrop, border-radius,
+ * and color variables as the rest of the LiveAtlas UI.
+ */
+
+.v-card {
+	background-color: var(--background-base) !important;
+	backdrop-filter: blur(24px) saturate(1.2);
+	-webkit-backdrop-filter: blur(24px) saturate(1.2);
+	border: 1px solid var(--border-color) !important;
+	color: var(--text-base) !important;
+}
+
+.v-dialog > .v-overlay__content > .v-card {
+	border-radius: var(--border-radius) !important;
+}
+
+.v-text-field {
+	.v-field {
+		font-size: 1.6rem;
+		border-radius: var(--border-radius) !important;
+		color: var(--text-base);
+
+		--v-field-border-opacity: 0.2;
+	}
+
+	.v-field--focused {
+		--v-field-border-opacity: 0.6;
+	}
+
+	.v-field__input {
+		font-size: 1.6rem;
+		min-height: 3.6rem;
+		padding-top: 0.6rem;
+		padding-bottom: 0.6rem;
+	}
+
+	.v-label {
+		font-size: 1.4rem;
+	}
+}
+
+.v-btn {
+	font-size: 1.6rem;
+	text-transform: none;
+	letter-spacing: normal;
+	font-weight: 500;
+}
+
+.v-alert {
+	font-size: 1.4rem;
+
+	.v-alert__content {
+		font-size: 1.4rem;
+	}
+}
+
+.v-list {
+	background: transparent !important;
+	color: var(--text-base) !important;
+}
+
+.v-list-item {
+	font-size: 1.5rem !important;
+	min-height: 3.6rem !important;
+	border-radius: var(--border-radius) !important;
+
+	&:hover {
+		background-color: var(--background-light);
+	}
+
+	&--active {
+		background-color: var(--background-light);
+	}
+}
+
+.v-overlay__scrim {
+	background-color: rgba(0, 0, 0, 0.8) !important;
+}

@@ -16,27 +16,24 @@
 
 <template>
 	<nav role="none" id="map-context-menu" ref="menuElement" :style="style" @keydown="handleKeydown">
-		<ul class="menu" role="menu">
-			<li role="none">
-				<!--suppress HtmlUnknownAttribute -->
-				<button type="button" role="menuitem" v-clipboard:copy="locationCopy"
-                v-clipboard:success="copySuccess"
-                v-clipboard:error="copyError">{{ locationLabel }}
-				</button>
-			</li>
-			<li role="none">
-				<!--suppress HtmlUnknownAttribute -->
-				<button type="button" role="menuitem"
-                v-clipboard:copy="url"
-                v-clipboard:success="copySuccess"
-                v-clipboard:error="copyError">{{ messageCopyLink }}
-				</button>
-			</li>
-			<li role="none">
-				<button type="button" role="menuitem" @click.prevent="pan">{{ messageCenterHere }}</button>
-			</li>
+		<v-list class="context-menu__list" density="compact">
+			<v-list-item
+				v-clipboard:copy="locationCopy"
+				v-clipboard:success="copySuccess"
+				v-clipboard:error="copyError">
+				<v-list-item-title>{{ locationLabel }}</v-list-item-title>
+			</v-list-item>
+			<v-list-item
+				v-clipboard:copy="url"
+				v-clipboard:success="copySuccess"
+				v-clipboard:error="copyError">
+				<v-list-item-title>{{ messageCopyLink }}</v-list-item-title>
+			</v-list-item>
+			<v-list-item @click.prevent="pan">
+				<v-list-item-title>{{ messageCenterHere }}</v-list-item-title>
+			</v-list-item>
 			<WorldListItem v-if="currentMap && mapCount > 1" :world="currentMap.appendedWorld || currentMap.world" name="context"></WorldListItem>
-		</ul>
+		</v-list>
 	</nav>
 </template>
 
@@ -77,7 +74,6 @@ export default defineComponent({
 					return 0;
 				}
 
-				//Use appendedWorld if present for map list
 				return currentMap.value?.appendedWorld ?
 					currentMap.value?.appendedWorld.maps.size : currentMap.value.world.maps.size;
 			}),
@@ -90,19 +86,16 @@ export default defineComponent({
 				return currentMap.value.latLngToLocation(event.value.latlng, 64);
 			}),
 
-			//Label for location button
 			locationLabel = computed(() => {
 				return `X: ${Math.round(location.value.x)}, Z: ${Math.round(location.value.z)}`;
 			}),
 
-			//Location text to copy
 			locationCopy = computed(() => {
 				return `${Math.round(location.value.x)}, ${Math.round(location.value.z)}`;
 			}),
 
 			embedBaseUrl = new URLSearchParams(window.location.search).get('embedBaseUrl'),
 
-			//Url to copy
 			url = computed(() => {
 				if (!currentMap.value) {
 					return '';
@@ -127,7 +120,6 @@ export default defineComponent({
 					} as CSSProperties;
 				}
 
-				//Don't position offscreen
 				const x = Math.min(
 					window.innerWidth - menuElement.value!.offsetWidth - 10,
 					event.value.originalEvent.clientX
@@ -149,15 +141,15 @@ export default defineComponent({
 		};
 
 		const handleKeydown = (e: KeyboardEvent) => {
-			handleKeyboardEvent(e, Array.from(menuElement.value!.querySelectorAll('button, input')));
+			handleKeyboardEvent(e, Array.from(menuElement.value!.querySelectorAll('.v-list-item, button, input')));
 		}
 
 		const focusFirstItem = () => {
 			if(menuElement.value) {
-				const firstItem = menuElement.value.querySelector('button');
+				const firstItem = menuElement.value.querySelector('.v-list-item');
 
 				if(firstItem) {
-					firstItem.focus();
+					(firstItem as HTMLElement).focus();
 				}
 			}
 		};
@@ -192,7 +184,6 @@ export default defineComponent({
 		props.leaflet.on('zoomstart', closeContextMenu);
 
 		props.leaflet.on('contextmenu', (e: LeafletMouseEvent) => {
-			//Ignore right-clicks on controls
 			if(e.originalEvent.target && (e.originalEvent.target as HTMLElement).closest('.leaflet-control')) {
 				return;
 			}
@@ -202,8 +193,6 @@ export default defineComponent({
 			event.value = e;
 		});
 
-		//Sometimes contextmenu events don't fire from leaflet for some reason
-		//As a workaround listen on the window and then use the last mousemove event for positioning
 		props.leaflet.on('mousemove', (e: LeafletMouseEvent) => {
 			lastMouseMoveEvent.value = e;
 		});
@@ -252,14 +241,30 @@ export default defineComponent({
 		top: 0;
 		left: 0;
 
-		ul {
-			background-color: var(--background-base);
+		.context-menu__list {
+			background-color: var(--background-base) !important;
+			backdrop-filter: blur(24px) saturate(1.2);
+			-webkit-backdrop-filter: blur(24px) saturate(1.2);
 			box-shadow: var(--box-shadow);
 			color: var(--text-base);
 			border-radius: var(--border-radius);
-			padding: 0.5rem;
-			position: relative;
-			z-index: 1;
+			border: 1px solid var(--border-color);
+			padding: 0.4rem;
+		}
+
+		:deep(.v-list-item) {
+			min-height: 3.6rem;
+			padding: 0 1.2rem;
+			cursor: pointer;
+			border-radius: calc(var(--border-radius) - 0.2rem);
+
+			&:hover {
+				background-color: var(--background-light);
+			}
+		}
+
+		:deep(.v-list-item-title) {
+			font-size: 1.5rem;
 		}
 
 		::v-deep(.world) {
