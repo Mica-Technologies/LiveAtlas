@@ -20,8 +20,6 @@ import {notify} from "@kyvg/vue3-notification";
 import {useStore} from "@/store";
 import {ActionTypes} from "@/store/action-types";
 import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
-import "@/assets/icons/login.svg";
-import "@/assets/icons/logout.svg";
 
 /**
  * Leaflet map control providing a login/logout button which opens the login modal/logs out on click

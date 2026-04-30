@@ -3,9 +3,9 @@
 import {defineConfig, loadEnv} from 'vite';
 import { resolve } from 'path';
 import vue from '@vitejs/plugin-vue';
-import svgSpritePlugin from "vite-plugin-svg-sprite-component";
+import vuetify from 'vite-plugin-vuetify';
+import {svgSpritePlugin} from './svg-sprite-plugin';
 import analyze from 'rollup-plugin-analyzer';
-import { splitVendorChunkPlugin } from 'vite'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd())
@@ -22,10 +22,7 @@ export default defineConfig(({ mode }) => {
   );
 
   return {
-    plugins: [splitVendorChunkPlugin(), vue(), analyze(), svgSpritePlugin({
-      symbolId: (name) => `icon--${name}`,
-      removeAttrs: ['xmlns', 'width', 'height', 'version']
-    })],
+    plugins: [vue(), vuetify({autoImport: true}), svgSpritePlugin(resolve(__dirname, 'src/assets/icons')), analyze()],
     base: './',
     server: {
     host: '0.0.0.0',

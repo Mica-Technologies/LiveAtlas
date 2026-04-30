@@ -20,6 +20,7 @@ import { VueClipboard } from '@soerenmartius/vue3-clipboard';
 import 'modern-normalize/modern-normalize.css';
 import 'leaflet/dist/leaflet.css';
 import '@/scss/style.scss';
+import {vuetify} from '@/vuetify';
 
 import {store} from "@/store";
 import {MutationTypes} from "@/store/mutation-types";
@@ -32,7 +33,7 @@ import Pl3xmapMapProvider from "@/providers/Pl3xmapMapProvider";
 import {showSplashError} from "@/util/splash";
 import ConfigurationError from "@/errors/ConfigurationError";
 import OverviewerMapProvider from "@/providers/OverviewerMapProvider";
-import.meta.globEager('/assets/icons/*.svg');
+import 'virtual:svg-icons-register';
 
 const splash = document.getElementById('splash');
 
@@ -83,6 +84,7 @@ window.liveAtlasLoaded = true;
 
 		const app = createApp(App)
 			.use(store)
+			.use(vuetify)
 			.use(Notifications)
 			.use(VueClipboard);
 

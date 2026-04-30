@@ -63,10 +63,6 @@ import MarkersSection from "@/components/sidebar/MarkersSection.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import {handleKeyboardEvent} from "@/util/events";
 import {focus} from "@/util";
-import "@/assets/icons/players.svg";
-import "@/assets/icons/maps.svg";
-import "@/assets/icons/servers.svg";
-import "@/assets/icons/marker_point.svg";
 
 export default defineComponent({
 	components: {

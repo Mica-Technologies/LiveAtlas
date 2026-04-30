@@ -25,8 +25,6 @@ import {MutationTypes} from "@/store/mutation-types";
 import {handleKeyboardEvent} from "@/util/events";
 import LayersObject = Control.LayersObject;
 import LayersOptions = Control.LayersOptions;
-import '@/assets/icons/layers.svg';
-import '@/assets/icons/checkbox.svg';
 
 const store = useStore();
 

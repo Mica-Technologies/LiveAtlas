@@ -367,3 +367,8 @@ export interface LiveAtlasTileElement extends HTMLImageElement {
 	callback: DoneCallback;
 	abortController: AbortController;
 }
+
+declare module 'virtual:svg-icons-register' {
+	const register: () => void;
+	export default register;
+}

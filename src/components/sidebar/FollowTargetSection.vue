@@ -40,7 +40,6 @@ import {useStore} from "@/store";
 import {MutationTypes} from "@/store/mutation-types";
 import {clipboardError, clipboardSuccess} from '@/util';
 import SvgIcon from "@/components/SvgIcon.vue";
-import "@/assets/icons/cross.svg";
 import PlayerImage from "@/components/PlayerImage.vue";
 
 export default defineComponent({

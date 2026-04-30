@@ -21,6 +21,21 @@
 @import "notifications";
 @import "leaflet";
 
+html {
+	font-size: 62.5% !important;
+}
+
+.v-application {
+	background: transparent !important;
+	height: 100%;
+	font-size: 1.6rem;
+}
+
+.v-application__wrap {
+	min-height: 100% !important;
+	height: 100%;
+}
+
 @keyframes spin {
 	0% {
 		transform: rotate(0deg);

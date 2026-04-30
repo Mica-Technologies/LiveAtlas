@@ -19,7 +19,6 @@ import {watch} from "vue";
 import {useStore} from "@/store";
 import {MutationTypes} from "@/store/mutation-types";
 
-import "@/assets/icons/chat.svg";
 
 /**
  * Leaflet map control providing a chat button which opens the chatbox on click

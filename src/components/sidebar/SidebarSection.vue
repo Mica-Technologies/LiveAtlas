@@ -41,7 +41,6 @@ import {defineComponent, computed} from "vue";
 import {LiveAtlasSidebarSection} from "@/index";
 import {useStore} from "@/store";
 import SvgIcon from "@/components/SvgIcon.vue";
-import '@/assets/icons/arrow.svg';
 import {MutationTypes} from "@/store/mutation-types";
 
 export default defineComponent({

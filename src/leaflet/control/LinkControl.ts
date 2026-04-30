@@ -21,7 +21,6 @@ import {Control, ControlOptions, DomUtil} from 'leaflet';
 import { toClipboard } from '@soerenmartius/vue3-clipboard';
 import {useStore} from "@/store";
 import {clipboardError, clipboardSuccess} from "@/util";
-import '@/assets/icons/link.svg';
 
 /**
  * Leaflet map control providing a button for copying a link for the current map view to the clipboard
