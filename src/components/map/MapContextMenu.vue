@@ -100,15 +100,22 @@ export default defineComponent({
 				return `${Math.round(location.value.x)}, ${Math.round(location.value.z)}`;
 			}),
 
+			embedBaseUrl = new URLSearchParams(window.location.search).get('embedBaseUrl'),
+
 			//Url to copy
 			url = computed(() => {
 				if (!currentMap.value) {
 					return '';
 				}
 
-				const url = new URL(window.location.href);
-				url.hash = getUrlForLocation(currentMap.value, location.value, currentZoom.value);
+				const hash = getUrlForLocation(currentMap.value, location.value, currentZoom.value);
 
+				if (embedBaseUrl) {
+					return embedBaseUrl + hash;
+				}
+
+				const url = new URL(window.location.href);
+				url.hash = hash;
 				return url;
 			}),
 
