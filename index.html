@@ -226,6 +226,41 @@
             --text-day: #ffdd33; /* Clock time in day */
         }
 
+        /* Light theme — activated via ?theme=light query param (embedded in Mica website) */
+        :root[data-theme="light"] {
+            --background-base: rgba(255, 255, 255, 0.4);
+            --background-base-solid: hsl(220, 35%, 97%);
+            --background-dark: hsl(0, 0%, 99%);
+            --background-light: hsl(220, 20%, 92%);
+            --background-error: hsl(0, 60%, 90%);
+            --background-marker: var(--background-dark);
+
+            --background-disabled: hsl(220, 10%, 85%);
+            --background-hover: rgba(0, 0, 0, 0.06);
+            --background-active: rgba(0, 0, 0, 0.12);
+            --background-selected: hsl(210, 98%, 48%);
+
+            --outline-focus: hsl(210, 98%, 48%);
+
+            --border-color: rgba(0, 0, 0, 0.12);
+            --border-error: hsl(0, 90%, 40%);
+            --box-shadow: 0px 4px 16px hsla(220, 30%, 5%, 0.07), 0px 8px 16px -5px hsla(220, 25%, 10%, 0.07);
+
+            --text-base: hsl(220, 20%, 25%);
+            --text-emphasis: hsl(220, 20%, 10%);
+            --text-subtle: hsl(220, 20%, 50%);
+            --text-disabled: hsl(220, 10%, 60%);
+            --text-marker: var(--text-base);
+
+            --text-hover: hsl(220, 20%, 10%);
+            --text-active: hsl(220, 20%, 10%);
+            --text-selected: hsl(0, 0%, 100%);
+            --text-shadow: none;
+
+            --text-night: #006680;
+            --text-day: #b38f00;
+        }
+
         @keyframes fade {
             from {
                 opacity: 0;
@@ -255,7 +290,7 @@
 
         *::-webkit-scrollbar-thumb {
             background-color: var(--background-light);
-            border: 2px solid #000000;
+            border: 2px solid var(--background-dark);
             border-radius: 2rem;
             transition: background 1s ease-in;
             padding-right: 0.2rem;
@@ -369,15 +404,23 @@
             height: 100%;
         }
     </style>
+    <script>
+        (function() {
+            var theme = new URLSearchParams(window.location.search).get('theme');
+            if (theme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
   </head>
   <body>
     <div id="splash">
-        <svg id="splash__logo" width="200" height="200" viewBox="0 0 268.83 266.53" aria-hidden="true" fill="rgba(255, 255, 255, 0.7)">
+        <svg id="splash__logo" width="200" height="200" viewBox="0 0 268.83 266.53" aria-hidden="true" fill="currentColor" style="color: var(--text-subtle)">
             <path d="M5.235.662C2.153.606 0 2.945 0 6.912v216.577c0 5.288 3.828 11.41 8.582 13.725l57.835 28.165c4.755 2.316 8.582-.078 8.582-5.367V43.434c0-5.288-3.827-11.41-8.582-13.727L8.582 1.544C7.394.965 6.262.681 5.235.662zm32.283 135.96c14.394 0 26.062 11.669 26.062 26.063 0 14.394-24.167 59.55-26.062 57.654-1.854 1.854-26.063-43.26-26.063-57.654 0-14.394 11.669-26.063 26.063-26.063zM202.388 1.013l57.833 28.165c4.755 2.315 8.583 8.437 8.583 13.726v216.58c0 5.29-3.828 7.683-8.583 5.367l-57.833-28.164c-4.755-2.316-8.583-8.438-8.583-13.727V6.38c0-5.289 3.828-7.682 8.583-5.367zM172.012.39c-1.051-.035-2.209.191-3.426.709l-68.342 29.053c-4.867 2.07-8.786 7.993-8.786 13.282V260.01c0 5.29 3.919 7.88 8.786 5.811l68.342-29.053c4.867-2.07 8.786-7.991 8.786-13.28V6.91c0-3.967-2.204-6.417-5.36-6.521zm-36.949 41.216c14.394 0 26.063 11.668 26.063 26.062 0 14.394-24.168 59.55-26.063 57.655C133.209 127.177 109 82.063 109 67.668c0-14.394 11.669-26.062 26.063-26.062z"/>
             <path d="M48.573 162.689a11.056 11.056 0 0 1-11.056 11.056 11.056 11.056 0 0 1-11.056-11.056 11.056 11.056 0 0 1 11.056-11.056 11.056 11.056 0 0 1 11.056 11.056zM146.12 67.669a11.056 11.056 0 0 1-11.057 11.056 11.056 11.056 0 0 1-11.056-11.056 11.056 11.056 0 0 1 11.056-11.056 11.056 11.056 0 0 1 11.056 11.056z"/>
         </svg>
 
-        <svg id="splash__spinner" width="38" height="38" viewBox="0 0 38 38" stroke="#fff" aria-label="LiveAtlas is loading">
+        <svg id="splash__spinner" width="38" height="38" viewBox="0 0 38 38" stroke="currentColor" style="color: var(--text-base)" aria-label="LiveAtlas is loading">
             <g transform="translate(1 1)" stroke-width="2" fill="none">
                 <circle stroke-opacity=".5" cx="18" cy="18" r="18"/>
                 <path d="M36 18c0-9.94-8.06-18-18-18">
