@@ -51,7 +51,7 @@ export class ClockControl extends Control {
 	private _unwatchHandler?: Function;
 
 	constructor(options: ClockControlOptions) {
-		super(Object.assign(options, {position: 'topcenter'}));
+		super(Object.assign(options, {position: 'bottomright'}));
 
 		Util.setOptions(this, options);
 	}

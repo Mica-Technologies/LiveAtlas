@@ -183,15 +183,16 @@ export default defineComponent({
 .sidebar {
 	position: fixed;
 	z-index: 110;
-	top: 0;
 	right: 0;
 	bottom: 0;
 	display: flex;
 	flex-direction: column;
+	justify-content: flex-end;
 	padding: var(--ui-element-spacing);
 	font-size: 1.5rem;
 	will-change: transform;
 	pointer-events: none;
+	max-height: 100%;
 
 	ul, ol, li {
 		padding: 0;
@@ -205,14 +206,18 @@ export default defineComponent({
 		flex-shrink: 0;
 		align-items: center;
 		justify-content: flex-end;
-		margin-bottom: var(--ui-element-spacing);
+		margin-top: var(--ui-element-spacing);
 		pointer-events: auto;
 		align-self: flex-end;
+		order: 2;
 
 		button {
 			width: var(--ui-button-size);
 			height: var(--ui-button-size);
 			box-shadow: var(--box-shadow);
+			backdrop-filter: blur(24px);
+			-webkit-backdrop-filter: blur(24px);
+			border: 1px solid var(--border-color);
 
 			& + button {
 				margin-left: var(--ui-element-spacing);
@@ -225,7 +230,7 @@ export default defineComponent({
 			margin: 0;
 			position: absolute;
 			right: var(--ui-element-spacing);
-			top: var(--ui-element-spacing);
+			bottom: var(--ui-element-spacing);
 
 			button + button {
 				margin-left: 0;
@@ -245,27 +250,27 @@ export default defineComponent({
 		margin-right: -0.5rem;
 		padding: 0.3rem 0.5rem 0 0.3rem;
 		width: 26rem;
-        align-items: flex-end;
+		align-items: flex-end;
 		overscroll-behavior: contain;
 		will-change: transform;
+		order: 1;
 
 		&:not(:hover):not(:focus-within) {
-			scrollbar-color: var(--background-base) transparent;
+			scrollbar-color: var(--background-base-solid) transparent;
 		}
 
 		&:not(:hover):not(:focus-within)::-webkit-scrollbar-thumb {
-			background-color: var(--background-base);
+			background-color: var(--background-base-solid);
 		}
 	}
 
 	@media (max-width: 480px) {
 		padding-right: 7rem;
-		padding-top: 0.8rem;
+		padding-bottom: 0.8rem;
 	}
 
 	@media (max-width: 400px) {
 		padding-right: 6.5rem;
-		padding-top: 0.3rem;
 		padding-bottom: 0.3rem;
 	}
 

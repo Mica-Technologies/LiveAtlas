@@ -22,7 +22,7 @@
 		padding: 1rem 1.5rem;
 		min-height: var(--ui-button-size);
 		font-size: 1.6rem;
-		font-family: Raleway, sans-serif;
+		font-family: Inter, system-ui, sans-serif;
 		color: var(--text-base);
 		display: flex;
 		flex-direction: column;
@@ -31,21 +31,24 @@
 		box-shadow: var(--box-shadow);
 
 		background: var(--background-base);
-		border-left: none;// 5px solid #187fe7;
+		backdrop-filter: blur(24px);
+		-webkit-backdrop-filter: blur(24px);
+		border: 1px solid var(--border-color);
+		border-left: none;
 
 		&.success {
-			background: #68cd86;
-			border-left-color: #42a85f;
+			background: hsla(120, 44%, 40%, 0.85);
+			border-left-color: hsl(120, 44%, 30%);
 		}
 
 		&.warn {
-			background: #ffb648;
-			border-left-color: #f48a06;
+			background: hsla(45, 90%, 40%, 0.85);
+			border-left-color: hsl(45, 90%, 30%);
 		}
 
 		&.error {
 			background: var(--background-error);
-			border-left-color: #b82e24;
+			border-left-color: hsl(0, 60%, 20%);
 		}
 	}
 

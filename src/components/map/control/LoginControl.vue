@@ -29,7 +29,7 @@ export default defineComponent({
 
 	setup(props) {
 		const control = new LoginControl({
-			position: 'topleft',
+			position: 'bottomleft',
 		});
 
 		onMounted(() => props.leaflet.addControl(control));

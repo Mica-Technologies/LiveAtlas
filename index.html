@@ -190,36 +190,37 @@
     </script>
 
     <style>
-        /* Theme colours */
+        /* Theme colours — MUI-aligned dark palette */
         :root {
-            --background-base: #222222; /* Foreground UI elements */
-            --background-dark: #121212; /* Body/Splash screen/Shadows */
-            --background-light: #363636; /* Scrollbars/inputs */
-            --background-error: #771616; /* Errors */
+            --background-base: rgba(8, 8, 13, 0.65); /* Foreground UI elements — semi-transparent for blur */
+            --background-base-solid: hsl(220, 30%, 6%); /* Solid variant for panels that need it */
+            --background-dark: hsl(220, 35%, 3%); /* Body/Splash screen */
+            --background-light: hsl(220, 20%, 15%); /* Scrollbars/inputs */
+            --background-error: hsl(0, 60%, 25%); /* Errors */
             --background-marker: var(--background-dark); /* Map markers */
 
-            --background-disabled: #555555; /* Disabled controls */
-            --background-hover: #363636; /* :hovered buttons/menu items */
-            --background-active: #6d6d6d; /* Button :active */
-            --background-selected: #BDBDBD; /* Selected buttons/menu items */
+            --background-disabled: hsl(220, 10%, 25%); /* Disabled controls */
+            --background-hover: rgba(255, 255, 255, 0.08); /* :hovered buttons/menu items */
+            --background-active: rgba(255, 255, 255, 0.16); /* Button :active */
+            --background-selected: hsl(210, 98%, 48%); /* Selected — brand blue */
 
-            --outline-focus: #eeeeee; /* :focus outline */
+            --outline-focus: hsl(210, 98%, 48%); /* :focus outline — brand blue */
 
-            --border-radius: 0.5rem;
-            --border-color: #333333; /* Control borders */
-            --border-error: #cc0e0e;
-            --box-shadow: 2px 2px 0px #111111;
+            --border-radius: 0.8rem;
+            --border-color: rgba(255, 255, 255, 0.08); /* Control borders */
+            --border-error: hsl(0, 90%, 40%);
+            --box-shadow: 0px 4px 16px hsla(220, 30%, 5%, 0.7), 0px 8px 16px -5px hsla(220, 25%, 10%, 0.8);
 
-            --text-base: rgba(255, 255, 255, 0.7); /* Normal text */
-            --text-emphasis: rgba(255, 255, 255, 0.87); /* Chat messages/:focus inputs */
-            --text-subtle: rgba(255, 255, 255, 0.5); /* Skeletons/secondary text */
+            --text-base: rgba(255, 255, 255, 0.85); /* Normal text */
+            --text-emphasis: hsl(0, 0%, 100%); /* Chat messages/:focus inputs */
+            --text-subtle: rgba(255, 255, 255, 0.45); /* Skeletons/secondary text */
             --text-disabled: var(--text-subtle); /* Disabled controls */
             --text-marker: var(--text-base); /* Map markers */
 
-            --text-hover: var(--text-base); /* Text in :hover buttons */
-            --text-active: var(--text-base); /* Text in :active buttons */
-            --text-selected: var(--background-base); /* Text in selected buttons */
-            --text-shadow: 0.1rem 0.1rem #000000; /* Text in selected buttons */
+            --text-hover: hsl(0, 0%, 100%); /* Text in :hover buttons */
+            --text-active: hsl(0, 0%, 100%); /* Text in :active buttons */
+            --text-selected: hsl(0, 0%, 100%); /* Text in selected buttons */
+            --text-shadow: none;
 
             --text-night: #ddffff; /* Clock time at night */
             --text-day: #ffdd33; /* Clock time in day */
@@ -282,7 +283,7 @@
         }
 
         body {
-            font-family: Raleway,
+            font-family: Inter,
             system-ui,
             -apple-system,
             'Segoe UI',
@@ -294,7 +295,7 @@
             'Segoe UI Emoji';
             color: var(--text-base);
             text-shadow: var(--text-shadow);
-            letter-spacing: 0.02rem;
+            letter-spacing: 0.01rem;
         }
 
         noscript {

@@ -38,7 +38,7 @@
 
 <script lang="ts">
 import {computed, ref, defineComponent} from "vue";
-import {CRS, LatLng, LatLngBounds, PanOptions, ZoomPanOptions} from 'leaflet';
+import {CRS, LatLng, LatLngBounds, PanOptions, ZoomPanOptions, Control} from 'leaflet';
 import {LiveAtlasLocation, LiveAtlasPlayer, LiveAtlasMapViewTarget} from "@/index";
 import {useStore} from '@/store';
 import {MutationTypes} from "@/store/mutation-types";
@@ -253,7 +253,7 @@ export default defineComponent({
 			center: new LatLng(0, 0),
 			fadeAnimation: false,
 			zoomAnimation: true,
-			zoomControl: true,
+			zoomControl: false,
 			preferCanvas: true,
 			attributionControl: false,
 			crs: CRS.Simple,
@@ -265,8 +265,9 @@ export default defineComponent({
 
 		this.leaflet.createPane('vectors');
 
+		this.leaflet.addControl(new Control.Zoom({position: 'bottomleft'}));
 		this.leaflet.addControl(new LoadingControl({
-			position: 'topleft',
+			position: 'bottomleft',
 			delayIndicator: 500,
 		}));
 

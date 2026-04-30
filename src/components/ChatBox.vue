@@ -132,13 +132,16 @@
 	.chat {
 		@extend %panel;
 		position: absolute;
-		bottom: calc((var(--ui-element-spacing) * 2) + var(--ui-button-size));
-		left: calc((var(--ui-element-spacing) * 2) + var(--ui-button-size));
+		bottom: calc((var(--ui-element-spacing) * 3) + (var(--ui-button-size) * 5));
+		left: var(--ui-element-spacing);
 		width: 50rem;
 		max-width: calc(100% - 8rem);
 		max-height: 20rem;
 		display: flex;
 		box-sizing: border-box;
+		backdrop-filter: blur(24px);
+		-webkit-backdrop-filter: blur(24px);
+		border: 1px solid var(--border-color);
 
 		.chat__messages {
 			display: flex;

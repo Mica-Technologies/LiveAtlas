@@ -39,6 +39,8 @@
 	src: url(../assets/fonts/Raleway-VariableFont_wght.ttf) format("opentype-variations");
 }
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 :root {
 	--ui-button-size: 5rem;
 	--ui-element-spacing: 1rem;
@@ -278,7 +280,7 @@ img {
     width: 15rem;
     height: 6rem;
     z-index: 50;
-	font-family: monospace;
+	font-family: 'JetBrains Mono', 'Fira Code', monospace;
 	display: flex;
 	flex-direction: column;
 	align-items: center;

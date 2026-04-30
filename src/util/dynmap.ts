@@ -264,7 +264,7 @@ export function buildComponents(response: Configuration, config: DynmapUrlConfig
 				components.logoControls.push({
 					text: component.text || '',
 					url: component.linkurl || undefined,
-					position: component.position.replace('-', '') || 'topleft',
+					position: component.position.replace('-', '').replace('top', 'bottom') || 'bottomleft',
 					image: component.logourl || undefined,
 				});
 				break;

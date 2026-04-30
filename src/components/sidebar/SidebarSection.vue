@@ -161,7 +161,7 @@ export default defineComponent({
 			position: sticky;
 			top: 4.8rem;
 			z-index: 3;
-			box-shadow: 0 1.5rem 0.5em var(--background-base);
+			box-shadow: 0 1.5rem 0.5em var(--background-base-solid);
 
 			& + .section__skeleton {
 				margin-top: 0;

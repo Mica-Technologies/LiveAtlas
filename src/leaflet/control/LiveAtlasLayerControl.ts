@@ -163,11 +163,10 @@ export class LiveAtlasLayerControl extends Control.Layers {
 	}
 
 	handleResize() {
-		const y = this._layersButton!.getBoundingClientRect().y;
+		const rect = this._layersButton!.getBoundingClientRect();
+		const availableHeight = rect.top - 20;
 
-		//Limit height to remaining vertical space
-		// Including 30px element padding, 10px padding from edge of viewport, and 55px padding to avoid covering bottom bar
-		this._section!.style.maxHeight = `calc(100vh - ${(y + 30 + 10 + 55)}px)`;
+		this._section!.style.maxHeight = `${availableHeight}px`;
 	}
 
 	addOverlayAtPosition(layer: Layer, name: string, position: number): this {

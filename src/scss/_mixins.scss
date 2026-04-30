@@ -32,9 +32,10 @@
 	display: block;
 	text-align: center;
 	position: relative;
-	transition: color 0.2s ease-in, background-color 0.2s ease-in;
-	font-size: 1.6rem;
-	font-family: Raleway, sans-serif;
+	transition: color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+	font-size: 1.4rem;
+	font-family: Inter, system-ui, sans-serif;
+	font-weight: 500;
 	box-sizing: border-box;
 	text-shadow: var(--text-shadow);
 	user-select: none;
@@ -78,7 +79,7 @@
 @mixin button-pressed {
 	background-color: var(--background-selected);
 	color: var(--text-selected);
-	font-weight: 700;
+	font-weight: 600;
 	text-shadow: none;
 }
 

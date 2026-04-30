@@ -23,6 +23,10 @@
 	overflow: visible;
 	font-size: 1.5rem;
 	flex-shrink: 0;
+	backdrop-filter: blur(24px);
+	-webkit-backdrop-filter: blur(24px);
+	border: 1px solid var(--border-color);
+	transition: background-color 0.15s ease, box-shadow 0.15s ease;
 
 	a, button {
 		@extend %button;
@@ -45,10 +49,12 @@
 	padding: 0;
 	border: none;
 	box-shadow: var(--box-shadow);
+	backdrop-filter: blur(24px);
+	-webkit-backdrop-filter: blur(24px);
 
 	a {
 		border-radius: 0;
-		border-bottom: 0.1rem solid var(--border-color);
+		border-bottom: 1px solid var(--border-color);
 
 		&:first-child {
 			border-top-left-radius: var(--border-radius);
@@ -106,17 +112,21 @@
 
 	.value {
 		line-height: 1;
-		font-family: monospace;
+		font-family: 'JetBrains Mono', 'Fira Code', monospace;
 		white-space: pre;
-		font-size: 2rem;
+		font-size: 1.8rem;
+		letter-spacing: 0.02em;
 
 		&[data-label]:before {
 			content: attr(data-label);
 			display: block;
 			line-height: 1;
 			margin-bottom: 0.5rem;
-			font-size: 1.25rem;
-			font-family: Raleway, sans-serif;;
+			font-size: 1.15rem;
+			font-family: Inter, sans-serif;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			color: var(--text-subtle);
 		}
 
 		& + .value {
@@ -124,20 +134,14 @@
 		}
 	}
 
-	@media (max-width: 600px) {
-		.region {
-			display: none;
-		}
-	}
-
 	@media (max-width: 480px), (max-height: 480px) {
 		.value {
-			font-size: 1.6rem;
+			font-size: 1.4rem;
 		}
 	}
 
 	@media (max-width: 384px) {
-		.chunk {
+		.region, .chunk {
 			display: none;
 		}
 	}
@@ -153,7 +157,7 @@
 		@extend %panel;
 		display: block;
 		position: absolute;
-		top: 0;
+		bottom: 0;
 		left: calc(var(--ui-element-spacing) + var(--ui-button-size));
 		overflow: auto;
 		max-width: calc(100vw - 14rem);
@@ -212,7 +216,6 @@
 	padding-top: var(--ui-element-spacing);
 	flex-direction: column;
 	top: 0;
-	bottom: calc((var(--ui-element-spacing) * 2) + var(--ui-button-size));
 	align-items: flex-start;
 	z-index: 1003;
 
@@ -226,7 +229,6 @@
 		}
 	}
 
-	/* Always show below other controls */
 	.leaflet-control-loading {
 		order: 3;
 	}
@@ -243,54 +245,79 @@
 			margin-top: var(--ui-element-spacing) !important;
 		}
 	}
-
-	.leaflet-control-bottom {
-		margin-top: auto;
-
-		&:last-child {
-			margin-bottom: 0;
-		}
-
-		& ~ .leaflet-control-bottom {
-			margin-top: 0;
-		}
-	}
-
-	.leaflet-control-chat {
-		order: 1000;
-	}
-
-	.leaflet-control-login {
-		order: 900;
-	}
-
-	.leaflet-control-zoom {
-		@media (max-width: 480px) and (pointer: coarse), (max-height: 480px) and (pointer: coarse), (max-height: 400px) {
-			display: none;
-
-			& + .leaflet-control {
-				margin-top: 0;
-			}
-		}
-	}
 }
 
 .leaflet-bottom {
 	padding-bottom: var(--ui-element-spacing);
-	align-items: stretch;
 	z-index: 1002;
 
-	.leaflet-control {
-		order: 2;
+	&.leaflet-left {
+		flex-direction: column;
+		align-items: flex-start;
+		justify-content: flex-end;
+		gap: var(--ui-element-spacing);
+
+		.leaflet-bar {
+			flex-direction: column;
+		}
+
+		.leaflet-control-logo {
+			order: 1;
+		}
+
+		.leaflet-control-loading {
+			order: 2;
+		}
+
+		.leaflet-control-login {
+			order: 3;
+		}
+
+		.leaflet-control-zoom {
+			order: 10;
+
+			@media (max-width: 480px) and (pointer: coarse), (max-height: 480px) and (pointer: coarse), (max-height: 400px) {
+				display: none;
+			}
+		}
+
+		.leaflet-control-layers {
+			order: 11;
+		}
+
+		.leaflet-control-chat {
+			order: 20;
+		}
+
+		.leaflet-control-link {
+			order: 21;
+		}
+
+		.leaflet-control-coordinates {
+			order: 30;
+
+			@media (max-width: 600px) {
+				flex-direction: column;
+				align-items: flex-start;
+
+				.value + .value {
+					margin-left: 0;
+					margin-top: 0.6rem;
+				}
+			}
+		}
 	}
 
-	/* Always show before other controls */
-	.leaflet-control-link {
-		order: 1;
+	&.leaflet-right {
+		flex-direction: column;
+		align-items: flex-end;
+		justify-content: flex-end;
+		gap: var(--ui-element-spacing);
+		padding-bottom: calc(var(--ui-button-size) + (var(--ui-element-spacing) * 2));
 	}
 
-	&.leaflet-left .leaflet-control {
-		margin-right: var(--ui-element-spacing);
+	&.leaflet-center {
+		gap: var(--ui-element-spacing);
 	}
 }
 

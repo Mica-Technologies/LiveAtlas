@@ -54,4 +54,7 @@
 	flex-direction: column;
 	padding: 1.5rem;
 	position: relative;
+	backdrop-filter: blur(24px);
+	-webkit-backdrop-filter: blur(24px);
+	border: 1px solid var(--border-color);
 }

@@ -27,7 +27,7 @@ export default class LayerManager {
 		const showControl = computed(() => useStore().state.components.layerControl);
 		this.map = map;
 		this.layerControl = new LiveAtlasLayerControl({}, {},{
-			position: 'topleft',
+			position: 'bottomleft',
 		});
 
 		if(showControl.value) {
