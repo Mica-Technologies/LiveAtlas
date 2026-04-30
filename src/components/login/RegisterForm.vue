@@ -15,40 +15,67 @@
   -->
 
 <template>
-	<form :class="{'form': true, 'form--invalid': invalid}" @submit.prevent="register" ref="form" novalidate>
+	<v-form :class="{'form': true, 'form--invalid': invalid}" @submit.prevent="register" ref="form" fast-fail>
 		<h3>{{ messageHeading }}</h3>
-		<p>{{ messageDescription }}</p>
+		<p class="form__description">{{ messageDescription }}</p>
 
-		<div class="form__group">
-			<label for="register-username" class="form__label" >{{ messageUsernameLabel }}</label>
-			<input id="register-username" type="text" name="username" autocomplete="username"
-             v-model="valueUsername" required/>
-		</div>
+		<v-text-field
+			id="register-username"
+			v-model="valueUsername"
+			:label="messageUsernameLabel"
+			type="text"
+			name="username"
+			autocomplete="username"
+			variant="outlined"
+			density="compact"
+			required
+			:rules="[v => !!v || '']"
+		/>
 
-		<div class="form__group">
-			<label for="register-password" class="form__label" >{{ messagePasswordLabel }}</label>
-			<input id="register-password" type="password" name="password" autocomplete="new-password"
-             v-model="valuePassword" required/>
-		</div>
+		<v-text-field
+			id="register-password"
+			v-model="valuePassword"
+			:label="messagePasswordLabel"
+			type="password"
+			name="password"
+			autocomplete="new-password"
+			variant="outlined"
+			density="compact"
+			required
+			:rules="[v => !!v || '']"
+		/>
 
-		<div class="form__group">
-			<label for="register-confirm-password" class="form__label">{{ messageConfirmPasswordLabel }}</label>
-			<input id="register-confirm-password" type="password" name="confirm_password"
-             autocomplete="new-password" v-model="valuePassword2" required ref="confirmPasswordField"
-      />
-		</div>
+		<v-text-field
+			id="register-confirm-password"
+			v-model="valuePassword2"
+			:label="messageConfirmPasswordLabel"
+			type="password"
+			name="confirm_password"
+			autocomplete="new-password"
+			variant="outlined"
+			density="compact"
+			required
+			:rules="[passwordMatchRule]"
+		/>
 
-		<div class="form__group">
-			<label for="register-code" class="form__label">{{ messageRegisterCodeLabel }}</label>
-			<input id="register-code" type="tel" name="code" minlength="9" maxlength="9" v-model="valueCode" required />
-		</div>
+		<v-text-field
+			id="register-code"
+			v-model="valueCode"
+			:label="messageRegisterCodeLabel"
+			type="tel"
+			name="code"
+			variant="outlined"
+			density="compact"
+			required
+			:rules="[v => !!v || '', v => (v && v.length === 9) || '']"
+			minlength="9"
+			maxlength="9"
+		/>
 
-		<div v-if="error" role="alert" aria-live="assertive" class="form__group alert">{{ error }}</div>
+		<v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-3">{{ error }}</v-alert>
 
-		<div class="form__group">
-			<button type="submit" :disabled="submitting">{{ messageSubmit }}</button>
-		</div>
-	</form>
+		<v-btn type="submit" :disabled="submitting" :loading="submitting" color="primary" block>{{ messageSubmit }}</v-btn>
+	</v-form>
 </template>
 
 <script lang="ts">
@@ -60,8 +87,7 @@ import {MutationTypes} from "@/store/mutation-types";
 export default defineComponent({
 	setup() {
 		const store = useStore(),
-			form = ref<HTMLFormElement | null>(null),
-			confirmPasswordField = ref<HTMLInputElement | null>(null),
+			form = ref<InstanceType<typeof import('vuetify/components').VForm> | null>(null),
 
 			loginModalVisible = computed(() => store.state.ui.visibleModal === 'login'),
 
@@ -84,6 +110,10 @@ export default defineComponent({
 			invalid = ref(false),
 			error = ref(null);
 
+		const passwordMatchRule = (v: string) => {
+			return v === valuePassword.value || messagePasswordMismatch.value;
+		};
+
 		watch(loginModalVisible, (newValue) => {
 			if(!newValue) {
 				valueUsername.value = '';
@@ -93,18 +123,11 @@ export default defineComponent({
 			}
 		});
 
-		const checkPasswords = () => {
-			if(valuePassword.value !== valuePassword2.value) {
-				confirmPasswordField.value!.setCustomValidity(messagePasswordMismatch.value)
-			} else {
-				confirmPasswordField.value!.setCustomValidity('');
-			}
-		}
-
 		const register = async () => {
 			error.value = null;
-			checkPasswords();
-			invalid.value = !form.value!.reportValidity();
+
+			const {valid} = await form.value!.validate();
+			invalid.value = !valid;
 
 			if(invalid.value) {
 				return;
@@ -129,7 +152,6 @@ export default defineComponent({
 
 		return {
 			form,
-			confirmPasswordField,
 
 			messageHeading,
 			messageDescription,
@@ -148,6 +170,7 @@ export default defineComponent({
 			invalid,
 			error,
 
+			passwordMatchRule,
 			register
 		};
 	}
@@ -155,7 +178,16 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-	p {
-		white-space: pre-line;
+.form {
+	h3 {
+		margin-bottom: 0.5rem;
 	}
+
+	.form__description {
+		white-space: pre-line;
+		margin-bottom: 1.2rem;
+		font-size: 1.4rem;
+		color: var(--text-subtle);
+	}
+}
 </style>

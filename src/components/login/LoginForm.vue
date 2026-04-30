@@ -15,27 +15,40 @@
   -->
 
 <template>
-	<form :class="{'form': true, 'form--invalid': invalid}" @submit.prevent="login" ref="form" novalidate>
+	<v-form :class="{'form': true, 'form--invalid': invalid}" @submit.prevent="login" ref="form" fast-fail>
 		<h3>{{ loginHeading }}</h3>
 
-		<div class="form__group">
-			<label for="login-username" class="form__label" >{{ usernameLabel }}</label>
-			<input id="login-username" type="text" name="username" autocomplete="username"
-             v-model="loginUsername" required ref="usernameField"/>
-		</div>
+		<v-text-field
+			id="login-username"
+			v-model="loginUsername"
+			:label="usernameLabel"
+			type="text"
+			name="username"
+			autocomplete="username"
+			variant="outlined"
+			density="compact"
+			required
+			:rules="[v => !!v || '']"
+			ref="usernameField"
+		/>
 
-		<div class="form__group">
-			<label for="login-password" class="form__label" >{{ passwordLabel }}</label>
-			<input id="login-password" type="password" name="password" autocomplete="current-password"
-             v-model="loginPassword" required/>
-		</div>
+		<v-text-field
+			id="login-password"
+			v-model="loginPassword"
+			:label="passwordLabel"
+			type="password"
+			name="password"
+			autocomplete="current-password"
+			variant="outlined"
+			density="compact"
+			required
+			:rules="[v => !!v || '']"
+		/>
 
-		<div v-if="error" role="alert" aria-live="assertive" class="form__group alert">{{ error }}</div>
+		<v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-3">{{ error }}</v-alert>
 
-		<div class="form__group">
-			<button type="submit" :disabled="submitting">{{ loginSubmit }}</button>
-		</div>
-	</form>
+		<v-btn type="submit" :disabled="submitting" :loading="submitting" color="primary" block>{{ loginSubmit }}</v-btn>
+	</v-form>
 </template>
 
 <script lang="ts">
@@ -48,12 +61,11 @@ import {MutationTypes} from "@/store/mutation-types";
 export default defineComponent({
 	setup() {
 		const store = useStore(),
-			form = ref<HTMLFormElement | null>(null),
-			usernameField = ref<HTMLFormElement | null>(null),
+			form = ref<InstanceType<typeof import('vuetify/components').VForm> | null>(null),
+			usernameField = ref<InstanceType<typeof import('vuetify/components').VTextField> | null>(null),
 
 			loginModalVisible = computed(() => store.state.ui.visibleModal === 'login'),
 
-			heading = computed(() => store.state.messages.loginHeading),
 			loginHeading = computed(() => store.state.messages.loginHeading),
 			usernameLabel = computed(() => store.state.messages.loginUsernameLabel),
 			passwordLabel = computed(() => store.state.messages.loginPasswordLabel),
@@ -72,7 +84,7 @@ export default defineComponent({
 				await nextTick();
 
 				if(loginModalVisible.value) {
-					usernameField.value!.focus();
+					usernameField.value?.focus();
 				} else {
 					loginUsername.value = '';
 					loginPassword.value = '';
@@ -82,7 +94,9 @@ export default defineComponent({
 
 		const login = async () => {
 			error.value = null;
-			invalid.value = !form.value!.reportValidity();
+
+			const {valid} = await form.value!.validate();
+			invalid.value = !valid;
 
 			if(invalid.value) {
 				return;
@@ -108,7 +122,6 @@ export default defineComponent({
 			form,
 			usernameField,
 
-			heading,
 			loginHeading,
 			usernameLabel,
 			passwordLabel,
@@ -126,3 +139,11 @@ export default defineComponent({
 	}
 });
 </script>
+
+<style lang="scss" scoped>
+.form {
+	h3 {
+		margin-bottom: 1.2rem;
+	}
+}
+</style>

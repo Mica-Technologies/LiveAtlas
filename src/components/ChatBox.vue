@@ -21,12 +21,27 @@
 			<li v-if="!chatMessages.length" class="message message--skeleton" role="none">{{ messageNoMessages }}</li>
 		</ul>
 		<form v-if="sendingEnabled" class="chat__form" @submit.prevent="sendMessage">
-			<div role="alert" v-if="sendingError" class="chat__error">{{ sendingError }}</div>
-			<input ref="chatInput" v-model="enteredMessage" class="chat__input" type="text" :maxlength="maxMessageLength"
-					:placeholder="messagePlaceholder"  :disabled="sendingMessage">
-			<button class="chat__send" :disabled="!enteredMessage || sendingMessage">{{ messageSend }}</button>
+			<v-alert v-if="sendingError" type="error" variant="tonal" density="compact" class="chat__error">
+				{{ sendingError }}
+			</v-alert>
+			<v-text-field
+				ref="chatInput"
+				v-model="enteredMessage"
+				class="chat__input"
+				type="text"
+				:maxlength="maxMessageLength"
+				:placeholder="messagePlaceholder"
+				:disabled="sendingMessage"
+				variant="outlined"
+				density="compact"
+				hide-details
+				single-line
+			/>
+			<v-btn type="submit" :disabled="!enteredMessage || sendingMessage" color="primary" variant="flat" class="chat__send">
+				{{ messageSend }}
+			</v-btn>
 		</form>
-		<button type="button" v-if="loginRequired" class="chat__login" @click="login">{{ messageLogin }}</button>
+		<v-btn v-if="loginRequired" variant="text" class="chat__login" block @click="login">{{ messageLogin }}</v-btn>
 	</section>
 </template>
 
@@ -53,7 +68,7 @@
 				sendingEnabled = computed(() => store.state.components.chatSending && !loginRequired.value),
 				maxMessageLength = computed(() => store.state.components.chatSending?.maxLength),
 
-				chatInput = ref<HTMLInputElement | null>(null),
+				chatInput = ref<InstanceType<typeof import('vuetify/components').VTextField> | null>(null),
 				enteredMessage = ref<string>(""),
 				sendingMessage = ref<boolean>(false),
 				sendingError = ref<string | null>(null),
@@ -94,7 +109,7 @@
 					} finally {
 						sendingMessage.value = false;
 
-						requestAnimationFrame(() => chatInput.value!.focus());
+						requestAnimationFrame(() => chatInput.value?.focus());
 					}
 				},
 
@@ -102,7 +117,7 @@
 
 			watch(chatBoxVisible, newValue => {
 				if(newValue && sendingEnabled.value) {
-					requestAnimationFrame(() => chatInput.value!.focus());
+					requestAnimationFrame(() => chatInput.value?.focus());
 				}
 			});
 
@@ -139,8 +154,8 @@
 		max-height: 20rem;
 		display: flex;
 		box-sizing: border-box;
-		backdrop-filter: blur(24px);
-		-webkit-backdrop-filter: blur(24px);
+		backdrop-filter: blur(24px) saturate(1.2);
+		-webkit-backdrop-filter: blur(24px) saturate(1.2);
 		border: 1px solid var(--border-color);
 
 		.chat__messages {
@@ -169,39 +184,34 @@
 		.chat__form {
 			display: flex;
 			flex-wrap: wrap;
-			align-items: stretch;
+			align-items: center;
 			margin: 1.5rem -1.5rem -1.5rem;
+			gap: 0;
 
 			.chat__input {
-				border-bottom-left-radius: var(--border-radius);
 				flex-grow: 1;
+
+				:deep(.v-field) {
+					border-radius: 0 0 0 var(--border-radius);
+				}
 			}
 
 			.chat__send {
-				padding-left: 1rem;
-				padding-right: 1rem;
 				border-radius: 0 0 var(--border-radius) 0;
+				height: 4rem;
 			}
 
 			.chat__error {
-				background-color: var(--background-error);
-				color: var(--text-emphasis);
-				font-size: 1.6rem;
-				padding: 0.5rem 1rem;
-				line-height: 2rem;
 				width: 100%;
+				border-radius: 0;
 			}
 		}
 
 		.chat__login {
 			font-size: 1.6rem;
-			padding: 1.2rem;
-			background-color: var(--background-light);
-			color: var(--text-subtle);
 			margin: 1.5rem -1.5rem -1.5rem;
-			text-align: left;
-			border-top-left-radius: 0;
-			border-top-right-radius: 0;
+			border-radius: 0 0 var(--border-radius) var(--border-radius);
+			color: var(--text-subtle);
 		}
 
 		@media (max-width: 400px), (max-height: 480px) {
