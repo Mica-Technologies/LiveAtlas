@@ -47,8 +47,10 @@ if(splash) {
 
 console.info(`LiveAtlas version ${store.state.version} - https://github.com/JLyne/LiveAtlas`);
 
+const isEmbedded = new URLSearchParams(window.location.search).has('embedBaseUrl');
+
 store.subscribe((mutation, state) => {
-	if(mutation.type === 'toggleSidebarSectionCollapsedState' || mutation.type === 'setSidebarSectionCollapsedState') {
+	if(!isEmbedded && (mutation.type === 'toggleSidebarSectionCollapsedState' || mutation.type === 'setSidebarSectionCollapsedState')) {
 		localStorage.setItem('uiSettings', JSON.stringify({
 			sidebar: state.ui.sidebar,
 		}));

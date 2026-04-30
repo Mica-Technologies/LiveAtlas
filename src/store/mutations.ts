@@ -100,10 +100,12 @@ export type Mutations<S = State> = {
 
 export const mutations: MutationTree<State> & Mutations = {
 	[MutationTypes.SET_UI_CONFIGURATION](state: State, config: LiveAtlasUIConfig) {
+		const isEmbedded = new URLSearchParams(window.location.search).has('embedBaseUrl');
+
 		try {
 			const uiSettings = JSON.parse(localStorage.getItem('uiSettings') || '{}');
 
-			if(uiSettings && uiSettings.sidebar) {
+			if(!isEmbedded && uiSettings && uiSettings.sidebar) {
 				for(const element in uiSettings.sidebar) {
 					const elementState: LiveAtlasSidebarSectionState = uiSettings.sidebar[element];
 
