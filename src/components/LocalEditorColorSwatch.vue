@@ -31,6 +31,15 @@
 					show-swatches />
 			</v-card>
 		</v-menu>
+		<button v-if="eyeDropperSupported" type="button" class="color-swatch__eyedropper"
+			:aria-label="`Sample ${label || 'color'} from the page`"
+			:title="`Sample ${label || 'color'} from the page`"
+			@click="sampleFromPage">
+			<!-- inline eyedropper glyph (Material Design "eyedropper-variant") -->
+			<svg viewBox="0 0 24 24" aria-hidden="true">
+				<path fill="currentColor" d="M20.71,5.63L18.37,3.29C18,2.9 17.34,2.9 16.96,3.29L13,7.25L11.91,6.16L10.5,7.58L11.62,8.7L4,16.32V20H7.68L15.3,12.38L16.42,13.5L17.84,12.09L16.75,11L20.71,7.04C21.1,6.65 21.1,6 20.71,5.63M6.84,18H6V17.16L13.59,9.57L14.43,10.41L6.84,18Z" />
+			</svg>
+		</button>
 		<v-text-field :model-value="modelValue" :label="label" density="compact" variant="outlined"
 			hide-details class="color-swatch__field"
 			@update:model-value="onTextInput" />
@@ -75,6 +84,28 @@ export default defineComponent({
 	setup(props, {emit}) {
 		const normalizedHex = computed(() => normalizeHex(props.modelValue));
 
+		// The native EyeDropper API is currently shipped in Chromium-based
+		// browsers (Chrome/Edge/Opera). It lets the user pick any pixel
+		// on the page — exactly what we want for sampling a colour off an
+		// existing marker on the map. We hide the button when unsupported
+		// rather than rolling a fallback for now.
+		const eyeDropperSupported = computed(() =>
+			typeof window !== 'undefined' && 'EyeDropper' in window);
+
+		const sampleFromPage = async () => {
+			const Ctor = (window as any).EyeDropper;
+			if(!Ctor) return;
+			try {
+				const result = await new Ctor().open();
+				if(result && typeof result.sRGBHex === 'string') {
+					const m = result.sRGBHex.match(/^#?([0-9a-f]{6})([0-9a-f]{2})?$/i);
+					if(m) emit('update:modelValue', `#${m[1].toLowerCase()}`);
+				}
+			} catch (e) {
+				// User pressed Esc to cancel — no-op.
+			}
+		};
+
 		const onPick = (val: string | object | null) => {
 			// v-color-picker can emit either a string (in hex mode) or an
 			// object with channels; strip alpha and emit a #rrggbb string.
@@ -94,6 +125,8 @@ export default defineComponent({
 
 		return {
 			normalizedHex,
+			eyeDropperSupported,
+			sampleFromPage,
 			onPick,
 			onTextInput,
 		};
@@ -117,6 +150,35 @@ export default defineComponent({
 			padding: 0;
 
 			&:hover {
+				border-color: var(--text-subtle);
+			}
+
+			&:focus-visible {
+				outline: 2px solid var(--outline-focus);
+				outline-offset: 1px;
+			}
+		}
+
+		&__eyedropper {
+			width: 3.5rem;
+			flex-shrink: 0;
+			padding: 0;
+			background-color: var(--background-light);
+			border: 1px solid var(--border-color);
+			border-radius: 0.3rem;
+			color: var(--text-base);
+			cursor: pointer;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+
+			svg {
+				width: 1.8rem;
+				height: 1.8rem;
+			}
+
+			&:hover {
+				background-color: var(--background-medium, var(--background-light));
 				border-color: var(--text-subtle);
 			}
 
