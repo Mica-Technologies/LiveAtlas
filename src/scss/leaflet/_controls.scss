@@ -14,7 +14,12 @@
  * limitations under the License.
  */
 
-.leaflet-control {
+// Doubled with .leaflet-touch variant so this base styling beats upstream
+// Leaflet's .leaflet-touch overrides (box-shadow:none + a 2px grey border
+// on .leaflet-bar and .leaflet-control-layers). On the fork those touch
+// overrides had been stripped.
+.leaflet-control,
+.leaflet-touch .leaflet-control {
 	background-color: var(--background-base);
 	border-radius: var(--border-radius);
 	box-shadow: var(--box-shadow);
@@ -43,7 +48,11 @@
 	}
 }
 
-.leaflet-bar {
+// .leaflet-touch variant repeated to override upstream Leaflet's
+// .leaflet-touch .leaflet-bar rules (a 2px grey border + box-shadow:none)
+// which would otherwise win on specificity for touch-capable browsers.
+.leaflet-bar,
+.leaflet-touch .leaflet-bar {
 	display: flex;
 	align-items: center;
 	padding: 0;
@@ -87,10 +96,17 @@
 	}
 }
 
+// The .leaflet-touch variants are listed alongside the plain selectors
+// so we beat upstream Leaflet's higher-specificity .leaflet-touch rules
+// (which would otherwise shrink the zoom and layers buttons to 30px /
+// 44px on browsers Leaflet detects as touch-capable — common on modern
+// laptops). The JLyne fork had stripped those rules from its CSS.
 .leaflet-control-button,
 .leaflet-control-layers-toggle,
+.leaflet-touch .leaflet-control-layers-toggle,
 .leaflet-control-logo,
-.leaflet-bar a {
+.leaflet-bar a,
+.leaflet-touch .leaflet-bar a {
 	@extend %button;
 	line-height: 3.5rem;
 	width: var(--ui-button-size);
@@ -147,7 +163,11 @@
 	}
 }
 
-.leaflet-control-layers {
+// .leaflet-touch variant repeated to override upstream Leaflet's
+// .leaflet-touch .leaflet-control-layers rule (a 2px grey border
+// + box-shadow:none) which would otherwise win on specificity.
+.leaflet-control-layers,
+.leaflet-touch .leaflet-control-layers {
 	width: auto;
 	border: none;
 	color: var(--text-base);
