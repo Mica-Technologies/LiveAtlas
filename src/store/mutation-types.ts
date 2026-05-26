@@ -75,6 +75,9 @@ export enum MutationTypes {
 	LOCAL_EDITOR_START_DRAWING = 'localEditorStartDrawing',
 	LOCAL_EDITOR_FINISH_DRAWING = 'localEditorFinishDrawing',
 	LOCAL_EDITOR_SET_SNAP = 'localEditorSetSnap',
+	LOCAL_EDITOR_ADD_SET = 'localEditorAddSet',
+	LOCAL_EDITOR_UPDATE_SET = 'localEditorUpdateSet',
+	LOCAL_EDITOR_DELETE_SET = 'localEditorDeleteSet',
 
 	RESET = 'reset'
 }

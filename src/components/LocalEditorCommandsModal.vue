@@ -62,9 +62,10 @@ export default defineComponent({
 				set: (val: boolean) => store.commit(MutationTypes.LOCAL_EDITOR_SET_COMMANDS_MODAL, val),
 			}),
 			existingSetIds = computed(() => new Set(store.state.markerSets.keys())),
+			localSets = computed(() => store.state.localEditor.sets),
 			output = computed(() => generateCommands(
 				store.state.localEditor.markers,
-				{existingSetIds: existingSetIds.value},
+				{existingSetIds: existingSetIds.value, localSets: localSets.value},
 			).join('\n'));
 
 		const close = () => store.commit(MutationTypes.LOCAL_EDITOR_SET_COMMANDS_MODAL, false);

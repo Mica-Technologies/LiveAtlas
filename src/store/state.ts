@@ -41,13 +41,14 @@ import {
 import LiveAtlasMapDefinition from "@/model/LiveAtlasMapDefinition";
 import {getMessages} from "@/util";
 import {getDefaultPlayerImage} from "@/util/images";
-import {LocalEditorMarker} from "@/util/localEditor";
+import {LocalEditorMarker, LocalEditorSet} from "@/util/localEditor";
 
 export type LocalEditorDrawingKind = 'area' | 'line' | 'circle-radius';
 
 export interface LocalEditorState {
 	active: boolean;
 	markers: LocalEditorMarker[];
+	sets: LocalEditorSet[];
 	selectedId?: string;
 	commandsModalOpen: boolean;
 	menu: {
@@ -274,6 +275,7 @@ export const state: State = {
 	localEditor: {
 		active: false,
 		markers: [],
+		sets: [],
 		selectedId: undefined,
 		commandsModalOpen: false,
 		menu: {open: false, x: 0, y: 0},

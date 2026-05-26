@@ -49,6 +49,7 @@ import {
 	clearPersisted as clearPersistedLocalEditor,
 	loadPersisted as loadPersistedLocalEditor,
 	LocalEditorMarker,
+	LocalEditorSet,
 	savePersisted as savePersistedLocalEditor,
 } from "@/util/localEditor";
 
@@ -116,6 +117,9 @@ export type Mutations<S = State> = {
 	[MutationTypes.LOCAL_EDITOR_START_DRAWING](state: S, payload: {id: string, kind: 'area' | 'line' | 'circle-radius'}): void
 	[MutationTypes.LOCAL_EDITOR_FINISH_DRAWING](state: S): void
 	[MutationTypes.LOCAL_EDITOR_SET_SNAP](state: S, enabled: boolean): void
+	[MutationTypes.LOCAL_EDITOR_ADD_SET](state: S, set: LocalEditorSet): void
+	[MutationTypes.LOCAL_EDITOR_UPDATE_SET](state: S, payload: {id: string, patch: Partial<LocalEditorSet>}): void
+	[MutationTypes.LOCAL_EDITOR_DELETE_SET](state: S, id: string): void
 
 	[MutationTypes.RESET](state: S): void
 }
@@ -597,18 +601,20 @@ export const mutations: MutationTree<State> & Mutations = {
 
 	[MutationTypes.LOCAL_EDITOR_CLEAR_MARKERS](state: State): void {
 		state.localEditor.markers.splice(0);
+		state.localEditor.sets.splice(0);
 		state.localEditor.selectedId = undefined;
 		clearPersistedLocalEditor();
 	},
 
 	[MutationTypes.LOCAL_EDITOR_HYDRATE](state: State): void {
-		const markers = loadPersistedLocalEditor();
+		const {markers, sets} = loadPersistedLocalEditor();
 		state.localEditor.markers.splice(0, state.localEditor.markers.length, ...markers);
+		state.localEditor.sets.splice(0, state.localEditor.sets.length, ...sets);
 		state.localEditor.selectedId = undefined;
 	},
 
 	[MutationTypes.LOCAL_EDITOR_PERSIST](state: State): void {
-		savePersistedLocalEditor(state.localEditor.markers);
+		savePersistedLocalEditor(state.localEditor.markers, state.localEditor.sets);
 	},
 
 	[MutationTypes.LOCAL_EDITOR_SET_COMMANDS_MODAL](state: State, open: boolean): void {
@@ -636,6 +642,20 @@ export const mutations: MutationTree<State> & Mutations = {
 
 	[MutationTypes.LOCAL_EDITOR_SET_SNAP](state: State, enabled: boolean): void {
 		state.localEditor.snapEnabled = enabled;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_ADD_SET](state: State, set: LocalEditorSet): void {
+		state.localEditor.sets.push(set);
+	},
+
+	[MutationTypes.LOCAL_EDITOR_UPDATE_SET](state: State, {id, patch}): void {
+		const set = state.localEditor.sets.find(s => s.id === id);
+		if(set) Object.assign(set, patch);
+	},
+
+	[MutationTypes.LOCAL_EDITOR_DELETE_SET](state: State, id: string): void {
+		const index = state.localEditor.sets.findIndex(s => s.id === id);
+		if(index !== -1) state.localEditor.sets.splice(index, 1);
 	},
 
 	//Cleanup for switching servers or reloading the configuration

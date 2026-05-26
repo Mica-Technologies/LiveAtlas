@@ -18,6 +18,14 @@ import {Coordinate} from "@/index";
 
 export type LocalEditorMarkerType = 'point' | 'area' | 'line' | 'circle';
 
+export interface LocalEditorSet {
+	id: string;
+	label: string;
+	hidden: boolean;
+	priority: number;
+	minZoom?: number;
+}
+
 interface LocalEditorMarkerBase {
 	id: string;
 	worldName: string;
@@ -67,11 +75,12 @@ export type LocalEditorMarker =
 	| LocalEditorCircleMarker;
 
 const STORAGE_KEY = 'liveatlas-local-editor';
-const STORAGE_VERSION = 2;
+const STORAGE_VERSION = 3;
 
 interface PersistedLocalEditor {
 	version: number;
 	markers: LocalEditorMarker[];
+	sets?: LocalEditorSet[];
 }
 
 const isCoordinate = (v: unknown): v is Coordinate => {
@@ -103,21 +112,36 @@ const isValidMarker = (m: unknown): m is LocalEditorMarker => {
 	return false;
 };
 
-export const loadPersisted = (): LocalEditorMarker[] => {
+const isValidSet = (s: unknown): s is LocalEditorSet => {
+	if(!s || typeof s !== 'object') return false;
+	const set = s as Partial<LocalEditorSet>;
+	return typeof set.id === 'string' && typeof set.label === 'string'
+		&& typeof set.hidden === 'boolean' && typeof set.priority === 'number';
+};
+
+export interface PersistedSnapshot {
+	markers: LocalEditorMarker[];
+	sets: LocalEditorSet[];
+}
+
+export const loadPersisted = (): PersistedSnapshot => {
 	try {
 		const raw = localStorage.getItem(STORAGE_KEY);
-		if (!raw) return [];
+		if (!raw) return {markers: [], sets: []};
 		const parsed = JSON.parse(raw) as PersistedLocalEditor;
-		if (parsed.version !== STORAGE_VERSION || !Array.isArray(parsed.markers)) return [];
-		return parsed.markers.filter(isValidMarker);
+		if (parsed.version !== STORAGE_VERSION || !Array.isArray(parsed.markers)) return {markers: [], sets: []};
+		return {
+			markers: parsed.markers.filter(isValidMarker),
+			sets: Array.isArray(parsed.sets) ? parsed.sets.filter(isValidSet) : [],
+		};
 	} catch (e) {
-		console.warn('Failed to load saved local editor markers', e);
-		return [];
+		console.warn('Failed to load saved local editor data', e);
+		return {markers: [], sets: []};
 	}
 };
 
-export const savePersisted = (markers: LocalEditorMarker[]): void => {
-	const data: PersistedLocalEditor = {version: STORAGE_VERSION, markers};
+export const savePersisted = (markers: LocalEditorMarker[], sets: LocalEditorSet[]): void => {
+	const data: PersistedLocalEditor = {version: STORAGE_VERSION, markers, sets};
 	localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 };
 
@@ -184,6 +208,9 @@ export interface CommandGenerationOptions {
 	// targeting a set not in this collection will get an /addset command
 	// emitted first.
 	existingSetIds: Set<string>;
+	// User-defined local sets. When a pending marker targets one of these,
+	// the emitted /addset includes its label/hide/priority/minzoom.
+	localSets: LocalEditorSet[];
 }
 
 const emitPoint = (m: LocalEditorPointMarker): string => {
@@ -268,12 +295,29 @@ export const generateCommands = (
 ): string[] => {
 	const lines: string[] = [];
 	const declaredSets = new Set<string>();
+	const localSetsById = new Map(options.localSets.map(s => [s.id, s]));
 
 	for (const m of markers) {
-		if (!options.existingSetIds.has(m.setId) && !declaredSets.has(m.setId)) {
+		if (options.existingSetIds.has(m.setId) || declaredSets.has(m.setId)) continue;
+
+		const localSet = localSetsById.get(m.setId);
+		if (localSet) {
+			const parts = [
+				'/dmarker addset',
+				`id:${localSet.id}`,
+				quoteArg(localSet.label || localSet.id),
+				`hide:${localSet.hidden ? 'true' : 'false'}`,
+				`prio:${localSet.priority}`,
+			];
+			if (typeof localSet.minZoom === 'number') {
+				parts.push(`minzoom:${localSet.minZoom}`);
+			}
+			lines.push(parts.join(' '));
+		} else {
+			// Bare fallback for set IDs the user typed freehand
 			lines.push(`/dmarker addset id:${m.setId} ${quoteArg(m.setId)}`);
-			declaredSets.add(m.setId);
 		}
+		declaredSets.add(m.setId);
 	}
 
 	for (const m of markers) {

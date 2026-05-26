@@ -190,7 +190,11 @@ export default defineComponent({
 		const editorActive = computed(() => store.state.localEditor.active);
 
 		const defaultSetId = computed(() => {
-			// Prefer the first existing real set so users land on a working command
+			// Prefer the user's first local set if any are defined, otherwise
+			// fall back to the first existing real set, otherwise "markers".
+			if(store.state.localEditor.sets.length) {
+				return store.state.localEditor.sets[0].id;
+			}
 			const first = store.state.markerSets.values().next().value;
 			return first ? first.id : 'markers';
 		});

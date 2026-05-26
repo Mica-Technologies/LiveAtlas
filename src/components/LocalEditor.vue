@@ -45,6 +45,8 @@
 			<span>Snap to nearby vertices</span>
 		</label>
 
+		<LocalEditorSets />
+
 		<section class="local-editor__list" aria-label="Pending markers">
 			<div v-if="!markers.length" class="local-editor__empty">No pending markers yet.</div>
 			<button v-for="marker in markers" :key="marker.id" type="button"
@@ -195,6 +197,7 @@ import {
 } from "@/util/localEditor";
 import {Coordinate} from "@/index";
 import SvgIcon from "@/components/SvgIcon.vue";
+import LocalEditorSets from "@/components/LocalEditorSets.vue";
 import {notify} from "@kyvg/vue3-notification";
 
 const toNum = (value: string | number): number | undefined => {
@@ -213,7 +216,7 @@ const markerCenter = (m: LocalEditorMarker): Coordinate => {
 
 export default defineComponent({
 	name: 'LocalEditor',
-	components: {SvgIcon},
+	components: {SvgIcon, LocalEditorSets},
 
 	setup() {
 		const store = useStore(),
@@ -227,9 +230,10 @@ export default defineComponent({
 			snapEnabled = computed(() => store.state.localEditor.snapEnabled);
 
 		const setOptions = computed(() => {
-			const opts: string[] = [];
-			markerSets.value.forEach((_set, id) => opts.push(id));
-			return opts;
+			const opts = new Set<string>();
+			markerSets.value.forEach((_set, id) => opts.add(id));
+			store.state.localEditor.sets.forEach(s => opts.add(s.id));
+			return Array.from(opts).sort();
 		});
 
 		const iconOptions = [...DEFAULT_ICON_IDS].sort();
