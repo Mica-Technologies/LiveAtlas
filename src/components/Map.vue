@@ -22,6 +22,7 @@
 			<TileLayerOverlay v-for="[name, overlay] in overlays" :key="name" :options="overlay" :leaflet="leaflet"></TileLayerOverlay>
 			<PlayersLayer v-if="playerMarkersEnabled" :leaflet="leaflet"></PlayersLayer>
 			<MarkerSetLayer v-for="[name, markerSet] in markerSets" :key="name" :markerSet="markerSet" :leaflet="leaflet"></MarkerSetLayer>
+			<LocalEditorLayer :leaflet="leaflet"></LocalEditorLayer>
 
 			<LogoControl v-for="logo in logoControls" :key="JSON.stringify(logo)" :options="logo" :leaflet="leaflet"></LogoControl>
 			<CoordinatesControl v-if="coordinatesControlEnabled" :leaflet="leaflet"></CoordinatesControl>
@@ -45,6 +46,7 @@ import {MutationTypes} from "@/store/mutation-types";
 import TileLayer from "@/components/map/layer/TileLayer.vue";
 import PlayersLayer from "@/components/map/layer/PlayersLayer.vue";
 import MarkerSetLayer from "@/components/map/layer/MarkerSetLayer.vue";
+import LocalEditorLayer from "@/components/map/layer/LocalEditorLayer.vue";
 import CoordinatesControl from "@/components/map/control/CoordinatesControl.vue";
 import ClockControl from "@/components/map/control/ClockControl.vue";
 import LinkControl from "@/components/map/control/LinkControl.vue";
@@ -63,6 +65,7 @@ export default defineComponent({
 		TileLayer,
 		PlayersLayer,
 		MarkerSetLayer,
+		LocalEditorLayer,
 		CoordinatesControl,
 		ClockControl,
 		LinkControl,

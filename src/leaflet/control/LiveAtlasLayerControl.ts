@@ -121,6 +121,16 @@ export class LiveAtlasLayerControl extends Control.Layers {
 		});
 		DomEvent.on(button,'click', () => store.commit(MutationTypes.TOGGLE_UI_ELEMENT_VISIBILITY, 'layers'));
 
+		// Right-click opens the local editor menu (Enter/Exit/Get commands/Clear).
+		DomEvent.on(button, 'contextmenu', (e: Event) => {
+			e.preventDefault();
+			const mouseEvent = e as MouseEvent;
+			store.commit(MutationTypes.LOCAL_EDITOR_OPEN_MENU, {
+				x: mouseEvent.clientX,
+				y: mouseEvent.clientY,
+			});
+		});
+
 		section.style.display = 'none';
 
 		button.title = store.state.messages.layersTitle;

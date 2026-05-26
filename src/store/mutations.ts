@@ -45,6 +45,12 @@ import {MutationTypes} from "@/store/mutation-types";
 import {nonReactiveState, State} from "@/store/state";
 import {getServerMapProvider} from "@/util/config";
 import {getDefaultPlayerImage} from "@/util/images";
+import {
+	clearPersisted as clearPersistedLocalEditor,
+	loadPersisted as loadPersistedLocalEditor,
+	LocalEditorMarker,
+	savePersisted as savePersistedLocalEditor,
+} from "@/util/localEditor";
 
 export type CurrentMapPayload = {
 	worldName: string;
@@ -95,6 +101,22 @@ export type Mutations<S = State> = {
 
 	[MutationTypes.SET_LOGGED_IN](state: S, payload: boolean): void
 	[MutationTypes.SET_LOGIN_REQUIRED](state: S, payload: boolean): void
+
+	[MutationTypes.LOCAL_EDITOR_SET_ACTIVE](state: S, active: boolean): void
+	[MutationTypes.LOCAL_EDITOR_ADD_MARKER](state: S, marker: LocalEditorMarker): void
+	[MutationTypes.LOCAL_EDITOR_UPDATE_MARKER](state: S, payload: {id: string, patch: Partial<LocalEditorMarker>}): void
+	[MutationTypes.LOCAL_EDITOR_DELETE_MARKER](state: S, id: string): void
+	[MutationTypes.LOCAL_EDITOR_SELECT_MARKER](state: S, id: string | undefined): void
+	[MutationTypes.LOCAL_EDITOR_CLEAR_MARKERS](state: S): void
+	[MutationTypes.LOCAL_EDITOR_HYDRATE](state: S): void
+	[MutationTypes.LOCAL_EDITOR_PERSIST](state: S): void
+	[MutationTypes.LOCAL_EDITOR_SET_COMMANDS_MODAL](state: S, open: boolean): void
+	[MutationTypes.LOCAL_EDITOR_OPEN_MENU](state: S, payload: {x: number, y: number}): void
+	[MutationTypes.LOCAL_EDITOR_CLOSE_MENU](state: S): void
+	[MutationTypes.LOCAL_EDITOR_START_DRAWING](state: S, payload: {id: string, kind: 'area' | 'line' | 'circle-radius'}): void
+	[MutationTypes.LOCAL_EDITOR_FINISH_DRAWING](state: S): void
+	[MutationTypes.LOCAL_EDITOR_SET_SNAP](state: S, enabled: boolean): void
+
 	[MutationTypes.RESET](state: S): void
 }
 
@@ -538,6 +560,82 @@ export const mutations: MutationTree<State> & Mutations = {
 		}
 
 		state.loginRequired = payload;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_SET_ACTIVE](state: State, active: boolean): void {
+		state.localEditor.active = active;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_ADD_MARKER](state: State, marker: LocalEditorMarker): void {
+		state.localEditor.markers.push(marker);
+		state.localEditor.selectedId = marker.id;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_UPDATE_MARKER](state: State, {id, patch}): void {
+		const marker = state.localEditor.markers.find(m => m.id === id);
+
+		if(marker) {
+			Object.assign(marker, patch);
+		}
+	},
+
+	[MutationTypes.LOCAL_EDITOR_DELETE_MARKER](state: State, id: string): void {
+		const index = state.localEditor.markers.findIndex(m => m.id === id);
+
+		if(index !== -1) {
+			state.localEditor.markers.splice(index, 1);
+		}
+
+		if(state.localEditor.selectedId === id) {
+			state.localEditor.selectedId = undefined;
+		}
+	},
+
+	[MutationTypes.LOCAL_EDITOR_SELECT_MARKER](state: State, id: string | undefined): void {
+		state.localEditor.selectedId = id;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_CLEAR_MARKERS](state: State): void {
+		state.localEditor.markers.splice(0);
+		state.localEditor.selectedId = undefined;
+		clearPersistedLocalEditor();
+	},
+
+	[MutationTypes.LOCAL_EDITOR_HYDRATE](state: State): void {
+		const markers = loadPersistedLocalEditor();
+		state.localEditor.markers.splice(0, state.localEditor.markers.length, ...markers);
+		state.localEditor.selectedId = undefined;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_PERSIST](state: State): void {
+		savePersistedLocalEditor(state.localEditor.markers);
+	},
+
+	[MutationTypes.LOCAL_EDITOR_SET_COMMANDS_MODAL](state: State, open: boolean): void {
+		state.localEditor.commandsModalOpen = open;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_OPEN_MENU](state: State, {x, y}): void {
+		state.localEditor.menu.x = x;
+		state.localEditor.menu.y = y;
+		state.localEditor.menu.open = true;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_CLOSE_MENU](state: State): void {
+		state.localEditor.menu.open = false;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_START_DRAWING](state: State, {id, kind}): void {
+		state.localEditor.drawing = {id, kind};
+		state.localEditor.selectedId = id;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_FINISH_DRAWING](state: State): void {
+		state.localEditor.drawing = undefined;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_SET_SNAP](state: State, enabled: boolean): void {
+		state.localEditor.snapEnabled = enabled;
 	},
 
 	//Cleanup for switching servers or reloading the configuration

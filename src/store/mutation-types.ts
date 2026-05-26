@@ -60,5 +60,21 @@ export enum MutationTypes {
 
 	SET_LOGGED_IN = 'setLoggedIn',
 	SET_LOGIN_REQUIRED = 'setLoginRequired',
+
+	LOCAL_EDITOR_SET_ACTIVE = 'localEditorSetActive',
+	LOCAL_EDITOR_ADD_MARKER = 'localEditorAddMarker',
+	LOCAL_EDITOR_UPDATE_MARKER = 'localEditorUpdateMarker',
+	LOCAL_EDITOR_DELETE_MARKER = 'localEditorDeleteMarker',
+	LOCAL_EDITOR_SELECT_MARKER = 'localEditorSelectMarker',
+	LOCAL_EDITOR_CLEAR_MARKERS = 'localEditorClearMarkers',
+	LOCAL_EDITOR_HYDRATE = 'localEditorHydrate',
+	LOCAL_EDITOR_PERSIST = 'localEditorPersist',
+	LOCAL_EDITOR_SET_COMMANDS_MODAL = 'localEditorSetCommandsModal',
+	LOCAL_EDITOR_OPEN_MENU = 'localEditorOpenMenu',
+	LOCAL_EDITOR_CLOSE_MENU = 'localEditorCloseMenu',
+	LOCAL_EDITOR_START_DRAWING = 'localEditorStartDrawing',
+	LOCAL_EDITOR_FINISH_DRAWING = 'localEditorFinishDrawing',
+	LOCAL_EDITOR_SET_SNAP = 'localEditorSetSnap',
+
 	RESET = 'reset'
 }

@@ -41,6 +41,26 @@ import {
 import LiveAtlasMapDefinition from "@/model/LiveAtlasMapDefinition";
 import {getMessages} from "@/util";
 import {getDefaultPlayerImage} from "@/util/images";
+import {LocalEditorMarker} from "@/util/localEditor";
+
+export type LocalEditorDrawingKind = 'area' | 'line' | 'circle-radius';
+
+export interface LocalEditorState {
+	active: boolean;
+	markers: LocalEditorMarker[];
+	selectedId?: string;
+	commandsModalOpen: boolean;
+	menu: {
+		open: boolean;
+		x: number;
+		y: number;
+	};
+	drawing?: {
+		id: string;
+		kind: LocalEditorDrawingKind;
+	};
+	snapEnabled: boolean;
+}
 
 export type State = {
 	version: string;
@@ -103,6 +123,8 @@ export type State = {
 	};
 
 	parsedUrl?: LiveAtlasParsedUrl;
+
+	localEditor: LocalEditorState;
 }
 
 export const state: State = {
@@ -247,7 +269,17 @@ export const state: State = {
 			maps: {},
 			markers: {},
 		},
-	}
+	},
+
+	localEditor: {
+		active: false,
+		markers: [],
+		selectedId: undefined,
+		commandsModalOpen: false,
+		menu: {open: false, x: 0, y: 0},
+		drawing: undefined,
+		snapEnabled: true,
+	},
 };
 
 export const nonReactiveState = Object.freeze({

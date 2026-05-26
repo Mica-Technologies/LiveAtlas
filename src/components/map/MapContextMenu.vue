@@ -32,6 +32,20 @@
 			<v-list-item @click.prevent="pan">
 				<v-list-item-title>{{ messageCenterHere }}</v-list-item-title>
 			</v-list-item>
+			<template v-if="editorActive">
+				<v-list-item class="context-menu__editor-item" @click.prevent="addLocal('point')">
+					<v-list-item-title>Add point here</v-list-item-title>
+				</v-list-item>
+				<v-list-item class="context-menu__editor-item" @click.prevent="addLocal('area')">
+					<v-list-item-title>Add area here</v-list-item-title>
+				</v-list-item>
+				<v-list-item class="context-menu__editor-item" @click.prevent="addLocal('line')">
+					<v-list-item-title>Add line here</v-list-item-title>
+				</v-list-item>
+				<v-list-item class="context-menu__editor-item" @click.prevent="addLocal('circle')">
+					<v-list-item-title>Add circle here</v-list-item-title>
+				</v-list-item>
+			</template>
 			<WorldListItem v-if="currentMap && mapCount > 1" :world="currentMap.appendedWorld || currentMap.world" name="context"></WorldListItem>
 		</v-list>
 	</nav>
@@ -45,6 +59,16 @@ import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
 import WorldListItem from "@/components/list/WorldListItem.vue";
 import {clipboardError, clipboardSuccess, getUrlForLocation} from "@/util";
 import {handleKeyboardEvent} from "@/util/events";
+import {MutationTypes} from "@/store/mutation-types";
+import {
+	createDefaultPoint,
+	generateMarkerId,
+	LocalEditorMarker,
+	LocalEditorMarkerType,
+	startArea,
+	startCircle,
+	startLine,
+} from "@/util/localEditor";
 
 export default defineComponent({
 	name: "MapContextMenu",
@@ -163,6 +187,44 @@ export default defineComponent({
 			}
 		}
 
+		const editorActive = computed(() => store.state.localEditor.active);
+
+		const defaultSetId = computed(() => {
+			// Prefer the first existing real set so users land on a working command
+			const first = store.state.markerSets.values().next().value;
+			return first ? first.id : 'markers';
+		});
+
+		const addLocal = (kind: LocalEditorMarkerType) => {
+			if(!currentMap.value || !store.state.currentWorld) {
+				return;
+			}
+
+			const id = generateMarkerId(store.state.localEditor.markers);
+			const world = store.state.currentWorld.name;
+			const set = defaultSetId.value;
+			const loc = location.value;
+
+			let marker: LocalEditorMarker;
+			switch(kind) {
+				case 'point':  marker = createDefaultPoint(id, world, set, loc); break;
+				case 'area':   marker = startArea(id, world, set, loc); break;
+				case 'line':   marker = startLine(id, world, set, loc); break;
+				case 'circle': marker = startCircle(id, world, set, loc); break;
+			}
+
+			store.commit(MutationTypes.LOCAL_EDITOR_ADD_MARKER, marker);
+
+			// Points are placed in one shot; everything else enters drawing mode
+			// so the user can keep clicking to add vertices / set radius.
+			if(kind !== 'point') {
+				const drawingKind = kind === 'circle' ? 'circle-radius' : kind;
+				store.commit(MutationTypes.LOCAL_EDITOR_START_DRAWING, {id, kind: drawingKind});
+			}
+
+			closeContextMenu();
+		};
+
 		watch(event, value => {
 			if(value) {
 				props.leaflet.closePopup();
@@ -227,6 +289,9 @@ export default defineComponent({
 
 			pan,
 			handleKeydown,
+
+			editorActive,
+			addLocal,
 		}
 	},
 })
@@ -265,6 +330,11 @@ export default defineComponent({
 
 		:deep(.v-list-item-title) {
 			font-size: 1.5rem;
+		}
+
+		.context-menu__editor-item :deep(.v-list-item-title) {
+			color: #f6a623;
+			font-weight: 500;
 		}
 
 		::v-deep(.world) {

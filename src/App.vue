@@ -20,6 +20,9 @@
 		<ChatBox v-if="chatBoxEnabled" v-show="chatBoxEnabled && chatVisible"></ChatBox>
 		<LoginModal v-if="loginEnabled" v-show="loginModalVisible" :required="loginRequired"></LoginModal>
 		<Sidebar></Sidebar>
+		<LocalEditor></LocalEditor>
+		<LocalEditorMenu></LocalEditorMenu>
+		<LocalEditorCommandsModal></LocalEditorCommandsModal>
 		<notifications position="bottom center" :speed="250" :max="3" :ignoreDuplicates="true" classes="notification" />
 	</v-app>
 </template>
@@ -37,6 +40,9 @@ import ChatBox from './components/ChatBox.vue';
 import {parseUrl} from '@/util';
 import {hideSplash, showSplash, showSplashError} from '@/util/splash';
 import LoginModal from "@/components/login/LoginModal.vue";
+import LocalEditor from "@/components/LocalEditor.vue";
+import LocalEditorMenu from "@/components/LocalEditorMenu.vue";
+import LocalEditorCommandsModal from "@/components/LocalEditorCommandsModal.vue";
 import {clearPlayerImageCache} from "@/util/images";
 
 export default defineComponent({
@@ -45,7 +51,10 @@ export default defineComponent({
 		Map,
 		Sidebar,
 		ChatBox,
-		LoginModal
+		LoginModal,
+		LocalEditor,
+		LocalEditorMenu,
+		LocalEditorCommandsModal,
 	},
 
 	setup() {
@@ -209,6 +218,7 @@ export default defineComponent({
 
 		handleUrl();
 		onResize();
+		store.commit(MutationTypes.LOCAL_EDITOR_HYDRATE, undefined);
 
 		onMounted(() => {
 			window.addEventListener('resize', onResize);

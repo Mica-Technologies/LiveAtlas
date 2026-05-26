@@ -30,7 +30,8 @@
               :title="messageMarkers"
               :aria-label="messageMarkers"
               :aria-expanded="markersVisible"
-              @click="handleSectionClick" @keydown="handleSectionKeydown">
+              @click="handleSectionClick" @keydown="handleSectionKeydown"
+              @contextmenu.prevent="openEditorMenu">
 				<SvgIcon name="marker_point"></SvgIcon>
 			</button>
 			<button ref="players-button" v-if="playerMakersEnabled" type="button"
@@ -103,6 +104,13 @@ export default defineComponent({
 					|| (smallScreen.value && playersVisible.value);
 			});
 
+		const openEditorMenu = (e: MouseEvent) => {
+			store.commit(MutationTypes.LOCAL_EDITOR_OPEN_MENU, {
+				x: e.clientX,
+				y: e.clientY,
+			});
+		};
+
 		//Arrow key section navigation
 		const handleSidebarKeydown = (e: KeyboardEvent) => {
 			if(!e.target || !(e.target as HTMLElement).matches('.section__heading button')) {
@@ -169,6 +177,8 @@ export default defineComponent({
 			handleSidebarKeydown,
 			handleSectionKeydown,
 			handleSectionClick,
+
+			openEditorMenu,
 		}
 	},
 });
