@@ -42,6 +42,13 @@ export default defineComponent({
 			currentWorld = computed(() => store.state.currentWorld),
 			chatBalloonsEnabled = computed(() => store.state.components.chatBalloons),
 
+			// Cheap dependency-only computed used by the watch below to react
+			// to position changes without {deep: true} on the whole player.
+			playerLocationSig = computed(() => {
+				const l = props.player.location;
+				return `${l.world}|${l.x}|${l.y}|${l.z}`;
+			}),
+
 			//Whether the marker is currently visible
 			markerVisible = ref(false),
 
@@ -187,6 +194,7 @@ export default defineComponent({
 			currentMap,
 			currentWorld,
 			chatBalloonsEnabled,
+			playerLocationSig,
 
 			marker,
 			markerVisible,
@@ -201,22 +209,22 @@ export default defineComponent({
 	},
 
 	watch: {
-		player: {
-			deep: true,
-			handler(newValue) {
-				if(this.currentMap && newValue.location.world === this.currentWorld!.name) {
-					if(!this.markerVisible) {
-						this.enableLayer();
-					} else {
-						const latLng = this.currentMap.locationToLatLng(newValue.location);
+		// Previously {deep: true} on the whole player — that re-walked every
+		// player field on every update. The handler only reacts to position
+		// changes, so we watch a cheap location signature instead.
+		playerLocationSig() {
+			if(this.currentMap && this.player.location.world === this.currentWorld!.name) {
+				if(!this.markerVisible) {
+					this.enableLayer();
+				} else {
+					const latLng = this.currentMap.locationToLatLng(this.player.location);
 
-						this.marker.setLatLng(latLng);
-						this.chatBalloon.setLatLng(latLng);
-					}
-				} else if(this.markerVisible) {
-					this.disableLayer();
+					this.marker.setLatLng(latLng);
+					this.chatBalloon.setLatLng(latLng);
 				}
-			},
+			} else if(this.markerVisible) {
+				this.disableLayer();
+			}
 		},
 		playerChat(newValue: LiveAtlasChat[]) {
 			if(!this.chatBalloonsEnabled || !this.markerVisible || !newValue.length) {

@@ -55,7 +55,19 @@ export class PlayerMarker extends Marker {
 	onAdd(map: Map) {
 		const imageUrl = computed(() => useStore().state.components.players.imageUrl);
 
-		this._playerUnwatch = watch(this._player, () => this._PlayerIcon.update(), {deep: true});
+		// Watch only the fields PlayerIcon.update() actually reads, by
+		// supplying getters. This replaces a {deep: true} watch on the whole
+		// player object, which used to walk the entire object tree (one
+		// such watcher per player) every time any player property changed.
+		this._playerUnwatch = watch(
+			[
+				() => this._player.displayName,
+				() => this._player.health,
+				() => this._player.armor,
+				() => this._player.yaw,
+			],
+			() => this._PlayerIcon.update(),
+		);
 		this._imageUrlUnwatch = watch(imageUrl, () => nextTick(() => this._PlayerIcon.updateImage()));
 
 		return super.onAdd(map);

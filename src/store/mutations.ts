@@ -399,12 +399,31 @@ export const mutations: MutationTree<State> & Mutations = {
 
 	//Removes all players not found in the provided keep set
 	[MutationTypes.SYNC_PLAYERS](state: State, keep: Set<string>) {
+		// Collect departed names in one pass (so the sortedPlayers compaction
+		// below is O(n) instead of the old splice-by-indexOf approach which
+		// degraded to O(n²) on servers with many simultaneous disconnects).
+		const removed = new Set<string>();
 		for(const [key, player] of state.players) {
 			if(!keep.has(player.name)) {
-				state.sortedPlayers.splice(state.sortedPlayers.indexOf(player), 1);
+				removed.add(player.name);
 				state.players.delete(key);
 			}
 		}
+
+		if(!removed.size) return;
+
+		// In-place compaction preserves the sortedPlayers array identity
+		// (some consumers track it reactively) while avoiding any extra
+		// allocation.
+		let write = 0;
+		for(let read = 0; read < state.sortedPlayers.length; read++) {
+			const player = state.sortedPlayers[read];
+			if(!removed.has(player.name)) {
+				if(write !== read) state.sortedPlayers[write] = player;
+				write++;
+			}
+		}
+		state.sortedPlayers.length = write;
 	},
 
 	//Sets flag indicating LiveAtlas has fully loaded

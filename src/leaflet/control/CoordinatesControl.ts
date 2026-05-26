@@ -17,8 +17,7 @@
  * limitations under the License.
  */
 
-import {ControlOptions, LeafletMouseEvent, Control, Map, DomUtil, Util} from 'leaflet';
-import {Coordinate} from "@/index";
+import {ControlOptions, LatLng, LeafletMouseEvent, Control, Map, DomUtil, Util} from 'leaflet';
 import {useStore} from "@/store";
 
 const store = useStore();
@@ -37,7 +36,8 @@ export class CoordinatesControl extends Control {
 	declare options: CoordinatesControlOptions;
 	declare _map ?: Map;
 
-	private _location?: Coordinate;
+	private _latLng?: LatLng;
+	private _hasLocation: boolean = false;
 	private _locationChanged: boolean = false;
 	private readonly _coordsContainer: HTMLSpanElement;
 	private readonly _regionContainer: HTMLSpanElement;
@@ -96,7 +96,10 @@ export class CoordinatesControl extends Control {
 			return;
 		}
 
-		this._location = store.state.currentMap.latLngToLocation(event.latlng, store.state.currentWorld!.seaLevel + 1);
+		// Stash the raw latlng; the projection happens inside _update() once
+		// per animation frame regardless of how many mousemove events fire.
+		this._latLng = event.latlng;
+		this._hasLocation = true;
 
 		if(!this._locationChanged) {
 			this._locationChanged = true;
@@ -109,7 +112,7 @@ export class CoordinatesControl extends Control {
 			return;
 		}
 
-		this._location = undefined;
+		this._hasLocation = false;
 
 		if(!this._locationChanged) {
 			this._locationChanged = true;
@@ -124,7 +127,7 @@ export class CoordinatesControl extends Control {
 
 		this._locationChanged = false;
 
-		if(!this._location) {
+		if(!this._hasLocation || !this._latLng) {
 			if (this.options.showY) {
 				this._coordsContainer.textContent = '-----, ---, -----';
 			} else {
@@ -142,13 +145,17 @@ export class CoordinatesControl extends Control {
 			return;
 		}
 
-		const x = Math.round(this._location.x).toString().padStart(5, ' '),
-			y = this._location.y.toString().padStart(3, ' '),
-			z = Math.round(this._location.z).toString().padStart(5, ' '),
-			regionX = Math.floor(this._location.x / 512).toString().padStart(3, ' '),
-			regionZ = Math.floor(this._location.z / 512).toString().padStart(3, ' '),
-			chunkX = Math.floor(this._location.x / 16).toString().padStart(4, ' '),
-			chunkZ = Math.floor(this._location.z / 16).toString().padStart(4, ' ');
+		const location = store.state.currentMap!.latLngToLocation(
+			this._latLng, store.state.currentWorld.seaLevel + 1
+		);
+
+		const x = Math.round(location.x).toString().padStart(5, ' '),
+			y = location.y.toString().padStart(3, ' '),
+			z = Math.round(location.z).toString().padStart(5, ' '),
+			regionX = Math.floor(location.x / 512).toString().padStart(3, ' '),
+			regionZ = Math.floor(location.z / 512).toString().padStart(3, ' '),
+			chunkX = Math.floor(location.x / 16).toString().padStart(4, ' '),
+			chunkZ = Math.floor(location.z / 16).toString().padStart(4, ' ');
 
 		if (this.options.showY) {
 			this._coordsContainer.textContent = `${x}, ${y}, ${z}`;
