@@ -130,6 +130,7 @@ export default defineComponent({
 			markers = computed(() => store.state.localEditor.markers),
 			selectedId = computed(() => store.state.localEditor.selectedId),
 			drawing = computed(() => store.state.localEditor.drawing),
+			picking = computed(() => store.state.localEditor.picking),
 			snapEnabled = computed(() => store.state.localEditor.snapEnabled),
 			layerGroup = new LayerGroup(),
 			layerCache = new Map<string, CachedLayer>();
@@ -160,7 +161,9 @@ export default defineComponent({
 		const bindSelect = (layer: any, id: string) => {
 			layer.off('click');
 			layer.on('click', (e: LeafletMouseEvent) => {
-				if(store.state.localEditor.drawing) return;
+				// Don't steal clicks while drawing or while the eyedropper
+				// is armed — both have their own click semantics.
+				if(store.state.localEditor.drawing || store.state.localEditor.picking) return;
 				e.originalEvent?.stopPropagation?.();
 				store.commit(MutationTypes.LOCAL_EDITOR_SELECT_MARKER, id);
 			});
@@ -383,6 +386,13 @@ export default defineComponent({
 		};
 
 		const onMapClick = (e: LeafletMouseEvent) => {
+			// Picking mode: a click that didn't hit a path lands on the map.
+			// Treat that as a cancel rather than seeding a vertex.
+			if(picking.value) {
+				store.commit(MutationTypes.LOCAL_EDITOR_FINISH_PICKING, undefined);
+				return;
+			}
+
 			const d = drawing.value;
 			if(!d || !currentMap.value || !currentWorld.value) return;
 
@@ -458,9 +468,96 @@ export default defineComponent({
 		};
 
 		const onKeydown = (e: KeyboardEvent) => {
-			if(e.key === 'Escape' && drawing.value) {
-				store.commit(MutationTypes.LOCAL_EDITOR_FINISH_DRAWING, undefined);
+			if(e.key === 'Escape') {
+				if(picking.value) {
+					store.commit(MutationTypes.LOCAL_EDITOR_FINISH_PICKING, undefined);
+				} else if(drawing.value) {
+					store.commit(MutationTypes.LOCAL_EDITOR_FINISH_DRAWING, undefined);
+				}
 			}
+		};
+
+		// --- Color sampling (eyedropper) ---
+		// When picking mode is active, every Path layer on the map (Dynmap
+		// areas/lines/circles as well as our own pending shapes) gets a
+		// one-shot click handler that copies its color + opacity onto the
+		// marker being edited.
+
+		const pickHandlers = new Map<Path, (e: LeafletMouseEvent) => void>();
+
+		const collectPaths = (): Path[] => {
+			const out: Path[] = [];
+			const visit = (layer: any) => {
+				if(layer === snapIndicator) return;
+				if(layer instanceof Path) {
+					out.push(layer);
+				} else if(typeof layer.eachLayer === 'function') {
+					layer.eachLayer(visit);
+				}
+			};
+			props.leaflet.eachLayer(visit);
+			return out;
+		};
+
+		const samplePath = (layer: Path) => {
+			const p = picking.value;
+			if(!p) return;
+
+			const opts = (layer as any).options || {};
+			let patch: Record<string, unknown> = {};
+
+			if(p.target === 'line') {
+				const color = typeof opts.color === 'string' ? opts.color : undefined;
+				const opacity = typeof opts.opacity === 'number' ? opts.opacity : undefined;
+				if(color) patch = {...patch, lineColor: color};
+				if(opacity !== undefined) patch = {...patch, lineOpacity: opacity};
+			} else {
+				const color = typeof opts.fillColor === 'string' ? opts.fillColor
+					: (typeof opts.color === 'string' ? opts.color : undefined);
+				const opacity = typeof opts.fillOpacity === 'number' ? opts.fillOpacity : undefined;
+				if(color) patch = {...patch, fillColor: color};
+				if(opacity !== undefined) patch = {...patch, fillOpacity: opacity};
+			}
+
+			if(!Object.keys(patch).length) {
+				// Layer has no usable color (e.g. an unstyled CircleMarker).
+				// Cancel picking rather than silently doing nothing.
+				store.commit(MutationTypes.LOCAL_EDITOR_FINISH_PICKING, undefined);
+				return;
+			}
+
+			const marker = markers.value.find(m => m.id === p.markerId);
+			if(!marker || !('style' in marker)) {
+				store.commit(MutationTypes.LOCAL_EDITOR_FINISH_PICKING, undefined);
+				return;
+			}
+
+			store.commit(MutationTypes.LOCAL_EDITOR_UPDATE_MARKER, {
+				id: p.markerId,
+				patch: {style: {...marker.style, ...patch}},
+			});
+			store.commit(MutationTypes.LOCAL_EDITOR_FINISH_PICKING, undefined);
+		};
+
+		const attachPickHandlers = () => {
+			const paths = collectPaths();
+			for(const path of paths) {
+				const handler = (e: LeafletMouseEvent) => {
+					e.originalEvent?.stopPropagation?.();
+					samplePath(path);
+				};
+				pickHandlers.set(path, handler);
+				path.on('click', handler);
+			}
+			document.body.classList.add('local-editor-picking');
+		};
+
+		const detachPickHandlers = () => {
+			for(const [path, handler] of pickHandlers) {
+				path.off('click', handler);
+			}
+			pickHandlers.clear();
+			document.body.classList.remove('local-editor-picking');
 		};
 
 		// Marker / selection changes drive the diff reconcile (no deep walk).
@@ -468,6 +565,17 @@ export default defineComponent({
 
 		// Projection change → drop cached layers and rebuild from scratch.
 		watch(currentMap, rebuildAll);
+
+		// Attach pick click handlers only while picking is active.
+		watch(picking, (newVal, oldVal) => {
+			const willBeOn = !!newVal;
+			const wasOn = !!oldVal;
+			if(willBeOn && !wasOn) {
+				attachPickHandlers();
+			} else if(!willBeOn && wasOn) {
+				detachPickHandlers();
+			}
+		});
 
 		// Attach the mousemove listener only while the user is drawing.
 		watch(drawing, (newVal, oldVal) => {
@@ -502,6 +610,7 @@ export default defineComponent({
 		});
 
 		onUnmounted(() => {
+			detachPickHandlers();
 			props.leaflet.removeLayer(layerGroup);
 			props.leaflet.off('click', onMapClick);
 			props.leaflet.off('mousemove', onMapMouseMove);
@@ -528,5 +637,12 @@ export default defineComponent({
 		&::before {
 			border-top-color: #f6a623 !important;
 		}
+	}
+
+	// Crosshair cursor while the eyedropper is armed so the user knows
+	// the next click on a marker will sample its colour.
+	body.local-editor-picking,
+	body.local-editor-picking .leaflet-container {
+		cursor: crosshair !important;
 	}
 </style>

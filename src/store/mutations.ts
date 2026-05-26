@@ -116,6 +116,8 @@ export type Mutations<S = State> = {
 	[MutationTypes.LOCAL_EDITOR_CLOSE_MENU](state: S): void
 	[MutationTypes.LOCAL_EDITOR_START_DRAWING](state: S, payload: {id: string, kind: 'area' | 'line' | 'circle-radius'}): void
 	[MutationTypes.LOCAL_EDITOR_FINISH_DRAWING](state: S): void
+	[MutationTypes.LOCAL_EDITOR_START_PICKING](state: S, payload: {markerId: string, target: 'line' | 'fill'}): void
+	[MutationTypes.LOCAL_EDITOR_FINISH_PICKING](state: S): void
 	[MutationTypes.LOCAL_EDITOR_SET_SNAP](state: S, enabled: boolean): void
 	[MutationTypes.LOCAL_EDITOR_ADD_SET](state: S, set: LocalEditorSet): void
 	[MutationTypes.LOCAL_EDITOR_UPDATE_SET](state: S, payload: {id: string, patch: Partial<LocalEditorSet>}): void
@@ -657,6 +659,14 @@ export const mutations: MutationTree<State> & Mutations = {
 
 	[MutationTypes.LOCAL_EDITOR_FINISH_DRAWING](state: State): void {
 		state.localEditor.drawing = undefined;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_START_PICKING](state: State, {markerId, target}): void {
+		state.localEditor.picking = {markerId, target};
+	},
+
+	[MutationTypes.LOCAL_EDITOR_FINISH_PICKING](state: State): void {
+		state.localEditor.picking = undefined;
 	},
 
 	[MutationTypes.LOCAL_EDITOR_SET_SNAP](state: State, enabled: boolean): void {

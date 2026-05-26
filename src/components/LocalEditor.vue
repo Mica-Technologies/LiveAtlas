@@ -144,7 +144,7 @@
 				<details class="local-editor__style" open>
 					<summary>Style</summary>
 					<div class="local-editor__style-stack">
-						<LocalEditorColorSwatch label="Line color"
+						<LocalEditorColorSwatch label="Line color" target="line" :marker-id="selected.id"
 							:model-value="(selected as any).style.lineColor"
 							@update:model-value="updateStyle('lineColor', $event)" />
 						<div class="local-editor__style-grid">
@@ -156,7 +156,7 @@
 								@update:model-value="updateStyleNumber('lineWeight', $event)" />
 						</div>
 						<template v-if="selected.type !== 'line'">
-							<LocalEditorColorSwatch label="Fill color"
+							<LocalEditorColorSwatch label="Fill color" target="fill" :marker-id="selected.id"
 								:model-value="(selected as any).style.fillColor"
 								@update:model-value="updateStyle('fillColor', $event)" />
 							<v-text-field label="Fill opacity" type="number" density="compact" variant="outlined" hide-details

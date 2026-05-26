@@ -44,6 +44,7 @@ import {getDefaultPlayerImage} from "@/util/images";
 import {LocalEditorMarker, LocalEditorSet} from "@/util/localEditor";
 
 export type LocalEditorDrawingKind = 'area' | 'line' | 'circle-radius';
+export type LocalEditorPickTarget = 'line' | 'fill';
 
 export interface LocalEditorState {
 	active: boolean;
@@ -59,6 +60,10 @@ export interface LocalEditorState {
 	drawing?: {
 		id: string;
 		kind: LocalEditorDrawingKind;
+	};
+	picking?: {
+		markerId: string;
+		target: LocalEditorPickTarget;
 	};
 	snapEnabled: boolean;
 }
@@ -280,6 +285,7 @@ export const state: State = {
 		commandsModalOpen: false,
 		menu: {open: false, x: 0, y: 0},
 		drawing: undefined,
+		picking: undefined,
 		snapEnabled: true,
 	},
 };
