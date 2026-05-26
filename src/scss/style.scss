@@ -137,7 +137,11 @@ img {
     image-rendering: pixelated;
 }
 
-.clock {
+// .leaflet-touch variant repeated so .leaflet-touch .leaflet-control
+// (which sets overflow: visible) doesn't override our overflow: hidden
+// and let the sun/moon SVGs spill out below the clock face.
+.clock,
+.leaflet-touch .clock {
 	@extend %panel;
 	position: relative;
     width: 15rem;
