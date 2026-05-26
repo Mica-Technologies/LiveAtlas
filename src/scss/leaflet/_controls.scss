@@ -184,6 +184,90 @@
 				margin-bottom: -0.4rem;
 			}
 		}
+
+		/* Restore the checkbox styling for layer-toggle rows. The Vuetify
+		   migration removed the generic .checkbox utility, but the Leaflet
+		   layers control still renders its own non-Vue checkbox DOM. */
+		.checkbox {
+			display: flex;
+			position: relative;
+			align-items: center;
+			min-height: 2.4rem;
+
+			&:before,
+			> svg,
+			input[type=checkbox] {
+				position: absolute;
+				top: 0;
+				bottom: 0;
+				left: 0;
+				margin: auto 1rem auto 0;
+			}
+
+			&:before {
+				content: '';
+				width: 2.2rem;
+				height: 2.2rem;
+				border: 0.2rem solid #cccccc;
+				border-radius: 0.3rem;
+				background-color: transparent;
+				box-sizing: border-box;
+				z-index: 0;
+			}
+
+			input[type=checkbox] {
+				width: 2.4rem;
+				height: 2.4rem;
+				opacity: 0;
+				z-index: 2;
+				cursor: pointer;
+
+				&:checked {
+					& ~ span {
+						color: var(--text-base);
+					}
+
+					& + svg {
+						opacity: 1;
+					}
+				}
+
+				&:focus ~ span:after {
+					content: '';
+					outline: var(--outline-focus) solid 0.3rem;
+					position: absolute;
+					top: 0;
+					right: -0.5rem;
+					bottom: 0;
+					left: -0.5rem;
+					border-radius: 0.5rem;
+				}
+
+				@include focus-reset {
+					& ~ span:after {
+						content: none;
+					}
+				}
+			}
+
+			> svg {
+				opacity: 0;
+				transition: opacity 0.2s ease-in;
+				z-index: 1;
+				width: 1.6rem;
+				height: 1.6rem;
+				pointer-events: none;
+			}
+
+			span {
+				color: var(--text-subtle);
+				padding-left: 3rem;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				display: block;
+			}
+		}
 	}
 }
 

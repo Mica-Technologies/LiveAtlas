@@ -60,7 +60,7 @@ export default defineComponent({
 
 			follow = () => store.commit(MutationTypes.SET_FOLLOW_TARGET, props.player),
 
-			onClick = (e: MouseEvent) => {
+			onClick = (e: MouseEvent | KeyboardEvent) => {
 				if(e.shiftKey) {
 					follow();
 				} else {
