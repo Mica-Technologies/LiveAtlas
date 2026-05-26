@@ -16,7 +16,7 @@
 
 <script lang="ts">
 import {computed, defineComponent, onMounted, onUnmounted, watch} from "vue";
-import {CircleMarker, Layer, LayerGroup, LeafletMouseEvent} from "leaflet";
+import {CircleMarker, Layer, LayerGroup, LeafletMouseEvent, Path} from "leaflet";
 import {useStore} from "@/store";
 import {MutationTypes} from "@/store/mutation-types";
 import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
@@ -73,6 +73,33 @@ const pathLeafletOptions = (style: PathStyle, selected: boolean) => ({
 	pane: 'vectors',
 });
 
+// Cheap stable string capturing every property whose change requires
+// rebuilding the Leaflet layer. Selection state is intentionally NOT
+// included — selection-only changes route through a restyle path.
+const styleSig = (s: PathStyle) =>
+	`${s.lineColor}|${s.lineOpacity}|${s.lineWeight}|${s.fillColor}|${s.fillOpacity}`;
+
+const markerSignature = (m: LocalEditorMarker): string => {
+	switch(m.type) {
+		case 'point':
+			return `p|${m.label}|${m.iconId}|${m.location.x},${m.location.y},${m.location.z}`;
+		case 'circle':
+			return `c|${m.label}|${m.center.x},${m.center.y},${m.center.z}|${m.radiusX}|${m.radiusZ}|${styleSig(m.style)}`;
+		case 'area':
+		case 'line': {
+			const pts = m.points.map(p => `${p.x},${p.y},${p.z}`).join(';');
+			return `${m.type[0]}|${m.label}|${pts}|${styleSig(m.style)}`;
+		}
+	}
+};
+
+interface CachedLayer {
+	signature: string;
+	marker: LocalEditorMarker;
+	layer: Layer;
+	selected: boolean;
+}
+
 export default defineComponent({
 	props: {
 		leaflet: {
@@ -90,13 +117,20 @@ export default defineComponent({
 			drawing = computed(() => store.state.localEditor.drawing),
 			snapEnabled = computed(() => store.state.localEditor.snapEnabled),
 			layerGroup = new LayerGroup(),
-			layers = new Map<string, Layer>();
+			layerCache = new Map<string, CachedLayer>();
 
 		let snapIndicator: CircleMarker | undefined;
 
 		const visibleMarkers = computed((): LocalEditorMarker[] => {
 			if(!currentWorld.value) return [];
 			return markers.value.filter(m => m.worldName === currentWorld.value!.name);
+		});
+
+		// Memoized snap-target list — recomputed only when the marker array
+		// or the current world changes, not on every mousemove.
+		const snapTargets = computed((): Coordinate[] => {
+			if(!currentWorld.value) return [];
+			return collectSnapTargets(markers.value, currentWorld.value.name);
 		});
 
 		const bindLabel = (layer: any, label: string, id: string) => {
@@ -111,7 +145,6 @@ export default defineComponent({
 		const bindSelect = (layer: any, id: string) => {
 			layer.off('click');
 			layer.on('click', (e: LeafletMouseEvent) => {
-				// Don't steal the click from drawing mode
 				if(store.state.localEditor.drawing) return;
 				e.originalEvent?.stopPropagation?.();
 				store.commit(MutationTypes.LOCAL_EDITOR_SELECT_MARKER, id);
@@ -225,26 +258,78 @@ export default defineComponent({
 			}
 		};
 
-		const reconcile = () => {
-			for(const [, layer] of layers) {
-				layerGroup.removeLayer(layer);
+		// Cheap path for "only the selection changed" — swap the leaflet
+		// style in place rather than rebuilding the layer.
+		const restyleForSelection = (layer: Layer, marker: LocalEditorMarker, selected: boolean) => {
+			if(marker.type === 'point') {
+				(layer as CircleMarker).setStyle(selected ? POINT_SELECTED_STYLE : POINT_STYLE);
+				return;
 			}
-			layers.clear();
+			// Path-based shapes — only the dashArray differs between states,
+			// but pathLeafletOptions also reconfirms the other style fields.
+			const style = (marker as LocalEditorAreaMarker | LocalEditorLineMarker | LocalEditorCircleMarker).style;
+			(layer as Path).setStyle(pathLeafletOptions(style, selected));
+		};
+
+		// Diff-based reconcile: only changed markers are rebuilt; selection
+		// changes are applied in place; unchanged markers are left alone.
+		const reconcile = () => {
+			const seen = new Set<string>();
 
 			for(const marker of visibleMarkers.value) {
-				const selected = marker.id === selectedId.value;
-				const layer = buildLayer(marker, selected);
-				if(!layer) continue;
-				layers.set(marker.id, layer);
-				layerGroup.addLayer(layer);
+				const id = marker.id;
+				seen.add(id);
+				const sig = markerSignature(marker);
+				const selected = id === selectedId.value;
+				const cached = layerCache.get(id);
+
+				if(!cached) {
+					const layer = buildLayer(marker, selected);
+					if(!layer) continue;
+					layerGroup.addLayer(layer);
+					layerCache.set(id, {signature: sig, marker, layer, selected});
+				} else if(cached.signature !== sig) {
+					layerGroup.removeLayer(cached.layer);
+					const layer = buildLayer(marker, selected);
+					if(!layer) {
+						layerCache.delete(id);
+						continue;
+					}
+					layerGroup.addLayer(layer);
+					cached.signature = sig;
+					cached.marker = marker;
+					cached.layer = layer;
+					cached.selected = selected;
+				} else if(cached.selected !== selected) {
+					restyleForSelection(cached.layer, marker, selected);
+					cached.selected = selected;
+					cached.marker = marker;
+				}
 			}
+
+			for(const [id, entry] of layerCache) {
+				if(!seen.has(id)) {
+					layerGroup.removeLayer(entry.layer);
+					layerCache.delete(id);
+				}
+			}
+		};
+
+		// Wipe the cache when the projection changes. Cheaper to start fresh
+		// than to validate every cached latlng.
+		const rebuildAll = () => {
+			for(const entry of layerCache.values()) {
+				layerGroup.removeLayer(entry.layer);
+			}
+			layerCache.clear();
+			reconcile();
 		};
 
 		// Snap a clicked location to a nearby existing vertex (XZ only)
 		// if snapping is enabled and Shift isn't held to override.
 		const applySnap = (location: Coordinate, shiftHeld: boolean): Coordinate => {
-			if(!snapEnabled.value || shiftHeld || !currentWorld.value) return location;
-			const targets = collectSnapTargets(markers.value, currentWorld.value.name);
+			if(!snapEnabled.value || shiftHeld) return location;
+			const targets = snapTargets.value;
 			// Don't snap to the marker currently being drawn — its own vertices
 			// would prevent the user from extending it freely.
 			const filtered = drawing.value
@@ -313,7 +398,13 @@ export default defineComponent({
 			}
 		};
 
-		const onMapMouseMove = (e: LeafletMouseEvent) => {
+		// Throttle mousemove handling to once per animation frame. Without
+		// this, snap lookup + indicator update can run hundreds of times per
+		// second during a drag.
+		let pendingMoveFrame = 0;
+		let lastMoveEvent: LeafletMouseEvent | null = null;
+
+		const handleMouseMove = (e: LeafletMouseEvent) => {
 			if(!drawing.value || !currentMap.value || !currentWorld.value) {
 				hideSnapIndicator();
 				return;
@@ -324,15 +415,11 @@ export default defineComponent({
 				hideSnapIndicator();
 				return;
 			}
-			const targets = collectSnapTargets(markers.value, currentWorld.value.name);
-			const filtered = targets.filter(t => {
-				const m = markers.value.find(mm => mm.id === drawing.value!.id);
-				if(!m) return true;
-				if(m.type === 'area' || m.type === 'line') {
-					return !m.points.includes(t as Coordinate);
-				}
-				return true;
-			});
+			const targets = snapTargets.value;
+			const drawingMarker = markers.value.find(mm => mm.id === drawing.value!.id);
+			const filtered = drawingMarker && (drawingMarker.type === 'area' || drawingMarker.type === 'line')
+				? targets.filter(t => !drawingMarker.points.includes(t))
+				: targets;
 			const snapped = findSnapTarget(raw, filtered);
 			if(snapped) {
 				updateSnapIndicator(currentMap.value.locationToLatLng(snapped));
@@ -341,21 +428,47 @@ export default defineComponent({
 			}
 		};
 
+		const onMapMouseMove = (e: LeafletMouseEvent) => {
+			lastMoveEvent = e;
+			if(pendingMoveFrame) return;
+			pendingMoveFrame = requestAnimationFrame(() => {
+				pendingMoveFrame = 0;
+				if(lastMoveEvent) handleMouseMove(lastMoveEvent);
+			});
+		};
+
 		const onKeydown = (e: KeyboardEvent) => {
 			if(e.key === 'Escape' && drawing.value) {
 				store.commit(MutationTypes.LOCAL_EDITOR_FINISH_DRAWING, undefined);
 			}
 		};
 
-		watch([visibleMarkers, selectedId, currentMap, drawing], reconcile, {deep: true});
-		watch(drawing, (val) => {
-			if(!val) hideSnapIndicator();
+		// Marker / selection changes drive the diff reconcile (no deep walk).
+		watch([visibleMarkers, selectedId], reconcile);
+
+		// Projection change → drop cached layers and rebuild from scratch.
+		watch(currentMap, rebuildAll);
+
+		// Attach the mousemove listener only while the user is drawing.
+		watch(drawing, (newVal, oldVal) => {
+			const willBeOn = !!newVal;
+			const wasOn = !!oldVal;
+			if(willBeOn && !wasOn) {
+				props.leaflet.on('mousemove', onMapMouseMove);
+			} else if(!willBeOn && wasOn) {
+				props.leaflet.off('mousemove', onMapMouseMove);
+				if(pendingMoveFrame) {
+					cancelAnimationFrame(pendingMoveFrame);
+					pendingMoveFrame = 0;
+				}
+				lastMoveEvent = null;
+				hideSnapIndicator();
+			}
 		});
 
 		onMounted(() => {
 			props.leaflet.addLayer(layerGroup);
 			props.leaflet.on('click', onMapClick);
-			props.leaflet.on('mousemove', onMapMouseMove);
 			window.addEventListener('keydown', onKeydown);
 			reconcile();
 		});
@@ -365,7 +478,8 @@ export default defineComponent({
 			props.leaflet.off('click', onMapClick);
 			props.leaflet.off('mousemove', onMapMouseMove);
 			window.removeEventListener('keydown', onKeydown);
-			layers.clear();
+			if(pendingMoveFrame) cancelAnimationFrame(pendingMoveFrame);
+			layerCache.clear();
 		});
 	},
 
