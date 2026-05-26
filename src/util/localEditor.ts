@@ -458,6 +458,21 @@ export const collectSnapTargets = (markers: LocalEditorMarker[], worldName: stri
 	return out;
 };
 
+// Extract the iconId from an iconUrl built by the Dynmap provider. URLs
+// follow the pattern `<prefix>_markers_/<iconId>.png` (see util/dynmap.ts).
+export const parseIconIdFromUrl = (url: string): string | null => {
+	const match = url.match(/_markers_\/([^/]+)\.png(?:[?#].*)?$/);
+	return match ? match[1] : null;
+};
+
+// Get the prefix `<base>_markers_/` shared by every Dynmap icon URL on the
+// current server. Looking up any existing iconUrl works because Dynmap
+// emits them all from the same base.
+export const extractIconUrlPrefix = (anyIconUrl: string): string | null => {
+	const match = anyIconUrl.match(/^(.+_markers_\/)[^/]+\.png(?:[?#].*)?$/);
+	return match ? match[1] : null;
+};
+
 // Returns the nearest target within `threshold` 2D blocks (XZ), or null.
 // We ignore Y because Dynmap markers are placed at a chosen elevation that
 // often differs from where the user is clicking.

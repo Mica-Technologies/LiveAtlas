@@ -72,9 +72,13 @@
 
 			<!-- Point-only fields -->
 			<template v-if="selected.type === 'point'">
-				<v-combobox label="Icon ID" density="compact" variant="outlined" hide-details
-					:items="iconOptions" :model-value="selected.iconId"
-					@update:model-value="updateField('iconId', $event)" />
+				<div class="local-editor__icon-row">
+					<v-text-field label="Icon ID" density="compact" variant="outlined" hide-details
+						:model-value="selected.iconId"
+						@update:model-value="updateField('iconId', $event)" class="local-editor__icon-field" />
+					<LocalEditorIconPicker :model-value="selected.iconId"
+						@update:model-value="updateField('iconId', $event)" />
+				</div>
 
 				<div class="local-editor__coords">
 					<v-text-field label="X" type="number" density="compact" variant="outlined" hide-details
@@ -137,20 +141,22 @@
 
 			<!-- Style fields for path types -->
 			<template v-if="hasStyle">
-				<details class="local-editor__style">
+				<details class="local-editor__style" open>
 					<summary>Style</summary>
-					<div class="local-editor__style-grid">
-						<v-text-field label="Line color" density="compact" variant="outlined" hide-details
+					<div class="local-editor__style-stack">
+						<LocalEditorColorSwatch label="Line color"
 							:model-value="(selected as any).style.lineColor"
 							@update:model-value="updateStyle('lineColor', $event)" />
-						<v-text-field label="Line opacity" type="number" density="compact" variant="outlined" hide-details
-							:model-value="(selected as any).style.lineOpacity" min="0" max="1" step="0.05"
-							@update:model-value="updateStyleNumber('lineOpacity', $event)" />
-						<v-text-field label="Line weight" type="number" density="compact" variant="outlined" hide-details
-							:model-value="(selected as any).style.lineWeight" min="1" step="1"
-							@update:model-value="updateStyleNumber('lineWeight', $event)" />
+						<div class="local-editor__style-grid">
+							<v-text-field label="Line opacity" type="number" density="compact" variant="outlined" hide-details
+								:model-value="(selected as any).style.lineOpacity" min="0" max="1" step="0.05"
+								@update:model-value="updateStyleNumber('lineOpacity', $event)" />
+							<v-text-field label="Line weight" type="number" density="compact" variant="outlined" hide-details
+								:model-value="(selected as any).style.lineWeight" min="1" step="1"
+								@update:model-value="updateStyleNumber('lineWeight', $event)" />
+						</div>
 						<template v-if="selected.type !== 'line'">
-							<v-text-field label="Fill color" density="compact" variant="outlined" hide-details
+							<LocalEditorColorSwatch label="Fill color"
 								:model-value="(selected as any).style.fillColor"
 								@update:model-value="updateStyle('fillColor', $event)" />
 							<v-text-field label="Fill opacity" type="number" density="compact" variant="outlined" hide-details
@@ -198,6 +204,8 @@ import {
 import {Coordinate} from "@/index";
 import SvgIcon from "@/components/SvgIcon.vue";
 import LocalEditorSets from "@/components/LocalEditorSets.vue";
+import LocalEditorIconPicker from "@/components/LocalEditorIconPicker.vue";
+import LocalEditorColorSwatch from "@/components/LocalEditorColorSwatch.vue";
 import {notify} from "@kyvg/vue3-notification";
 
 const toNum = (value: string | number): number | undefined => {
@@ -216,7 +224,7 @@ const markerCenter = (m: LocalEditorMarker): Coordinate => {
 
 export default defineComponent({
 	name: 'LocalEditor',
-	components: {SvgIcon, LocalEditorSets},
+	components: {SvgIcon, LocalEditorSets, LocalEditorIconPicker, LocalEditorColorSwatch},
 
 	setup() {
 		const store = useStore(),
@@ -237,6 +245,7 @@ export default defineComponent({
 		});
 
 		const iconOptions = [...DEFAULT_ICON_IDS].sort();
+		void iconOptions; // Retained in case we want fallback combobox suggestions
 
 		const hasStyle = computed(() => {
 			const t = selected.value?.type;
@@ -613,7 +622,23 @@ export default defineComponent({
 			display: grid;
 			grid-template-columns: repeat(2, 1fr);
 			gap: 0.5rem;
+		}
+
+		&__style-stack {
+			display: flex;
+			flex-direction: column;
+			gap: 0.5rem;
 			padding-top: 0.5rem;
+		}
+
+		&__icon-row {
+			display: flex;
+			flex-direction: column;
+			gap: 0.4rem;
+		}
+
+		&__icon-field {
+			flex: 1 1 auto;
 		}
 
 		&__form-actions {
