@@ -15,33 +15,25 @@
   -->
 
 <template>
-    <template v-if="singleMapWorlds">
-      <input :id="`${name}-${maps[0].world.name}-${maps[0].name}`" type="radio" :name="name"
-                 v-bind:value="[maps[0].world.name, maps[0].name]" v-model="currentMap"
-                 :aria-labelledby="`${name}-${maps[0].world.name}-${maps[0].name}-label`">
-      <label :id="`${name}-${maps[0].world.name}-${maps[0].name}-label`"
-             :for="`${name}-${maps[0].world.name}-${maps[0].name}`">
-        {{ maps[0].world.displayName }}
-      </label>
-    </template>
-    <template v-else>
-      <div v-if="maps.length" class="world">
-        <span class="world__name" aria-hidden="true">{{ world.displayName }}</span>
-        <div class="world__maps menu">
-          <template v-for="map in maps" :key="`${map.world.name}_${map.name}`">
-            <input :id="`${name}-${map.world.name}-${map.name}`" type="radio" :name="name"
-                   v-bind:value="[map.world.name,map.name]" v-model="currentMap"
-                   :aria-labelledby="`${name}-${map.world.name}-${map.name}-label`">
-            <label :id="`${name}-${map.world.name}-${map.name}-label`" class="map"
-                   :for="`${name}-${map.world.name}-${map.name}`"
-                   :title="`${map.world.displayName} - ${map.displayName}`">
-              <img v-if="map.hasCustomIcon()" :src="map.getIcon()" alt="" />
-              <SvgIcon v-else :name="map.getIcon()"></SvgIcon>
-            </label>
-          </template>
-        </div>
-	    </div>
-    </template>
+	<template v-if="singleMapWorlds">
+		<v-list-item :active="isMapActive(maps[0])" @click="selectMap(maps[0])"
+			:title="maps[0].world.displayName" />
+	</template>
+	<template v-else>
+		<div v-if="maps.length" class="world">
+			<span class="world__name" aria-hidden="true">{{ world.displayName }}</span>
+			<div class="world__maps">
+				<v-btn v-for="map in maps" :key="`${map.world.name}_${map.name}`"
+					icon variant="text" size="small"
+					:class="{'map--active': isMapActive(map)}"
+					:title="`${map.world.displayName} - ${map.displayName}`"
+					@click="selectMap(map)">
+					<img v-if="map.hasCustomIcon()" :src="map.getIcon()" alt="" />
+					<SvgIcon v-else :name="map.getIcon()" />
+				</v-btn>
+			</div>
+		</div>
+	</template>
 </template>
 
 <script lang="ts">
@@ -68,11 +60,10 @@ export default defineComponent({
 
 	setup(props) {
 		const store = useStore(),
-      singleMapWorlds = computed(() => store.state.configuration.singleMapWorlds),
+			singleMapWorlds = computed(() => store.state.configuration.singleMapWorlds),
 			maps = computed(() => {
 				const maps: LiveAtlasMapDefinition[] = [];
 
-				//Filter out maps appended to other worlds
 				props.world.maps.forEach(map => {
 					if(!map.appendedWorld || map.appendedWorld.name === props.world.name) {
 						maps.push(map);
@@ -80,19 +71,25 @@ export default defineComponent({
 				});
 
 				return maps;
-			}),
-			currentMap = computed({
-				get: () => store.state.currentMap ? [store.state.currentWorld!.name, store.state.currentMap.name] : undefined,
-				set: (value) => value && store.commit(MutationTypes.SET_CURRENT_MAP, {
-					worldName: value[0],
-					mapName: value[1]
-				})
 			});
 
+		const isMapActive = (map: LiveAtlasMapDefinition) => {
+			return store.state.currentMap?.name === map.name
+				&& store.state.currentWorld?.name === map.world.name;
+		};
+
+		const selectMap = (map: LiveAtlasMapDefinition) => {
+			store.commit(MutationTypes.SET_CURRENT_MAP, {
+				worldName: map.world.name,
+				mapName: map.name
+			});
+		};
+
 		return {
-			currentMap,
-      singleMapWorlds,
-			maps
+			singleMapWorlds,
+			maps,
+			isMapActive,
+			selectMap,
 		}
 	}
 });
@@ -102,7 +99,7 @@ export default defineComponent({
 	.world {
 		display: flex;
 		align-items: center;
-		margin-bottom:  .5rem;
+		margin-bottom: .5rem;
 		padding-left: 0.8rem;
 
 		.world__name {
@@ -124,19 +121,19 @@ export default defineComponent({
 		}
 	}
 
-	.map {
+	.map--active {
+		background-color: var(--background-light);
+		outline: 2px solid var(--outline-focus);
+	}
+
+	:deep(.v-btn) {
 		width: 3.2rem;
 		height: 3.2rem;
 		margin-right: 0.5rem;
 
 		.svg-icon, img {
-			position: absolute;
-			top: 0.2rem !important;
-			right: 0.2rem !important;
-			bottom: 0.2rem !important;
-			left: 0.2rem !important;
-			width: calc(100% - 0.4rem) !important;
-			height: auto !important;
+			width: 2.4rem;
+			height: 2.4rem;
 		}
 	}
 </style>

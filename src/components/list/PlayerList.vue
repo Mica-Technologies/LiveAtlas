@@ -18,9 +18,9 @@
 	<v-text-field ref="searchInput" v-if="filteredPlayers && search" class="section__search"
 		v-model="searchQuery" :placeholder="messagePlayersSearchPlaceholder"
 		@keydown="onKeydown" hide-details single-line density="compact" variant="outlined" clearable />
-	<RadioList v-if="filteredPlayers.length" name="player" :aria-labelledby="ariaLabelledby">
+	<v-list v-if="filteredPlayers.length" density="compact" :aria-labelledby="ariaLabelledby">
 		<PlayerListItem v-for="player in filteredPlayers" :key="player.name" :player="player"></PlayerListItem>
-	</RadioList>
+	</v-list>
 	<div v-else-if="searchQuery" class="section__skeleton">{{ messageSkeletonPlayersSearch }}</div>
 	<div v-else class="section__skeleton">{{ messageSkeletonPlayers }}</div>
 </template>
@@ -30,11 +30,9 @@ import {ref, computed, defineComponent, watch} from "vue";
 import {LiveAtlasPlayer} from "@/index";
 import {useStore} from "@/store";
 import PlayerListItem from "./PlayerListItem.vue";
-import RadioList from "@/components/util/RadioList.vue";
 
 export default defineComponent({
 	components: {
-		RadioList,
 		PlayerListItem
 	},
 	props: {

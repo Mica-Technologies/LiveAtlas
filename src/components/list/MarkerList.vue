@@ -19,30 +19,30 @@
 		:model-value="searchQuery" :placeholder="messageMarkersSearchPlaceholder"
 		@keydown="(e: KeyboardEvent) => e.stopImmediatePropagation()" @update:model-value="onSearchInput"
 		hide-details single-line density="compact" variant="outlined" clearable />
-	<RadioList v-if="markers.size" name="marker" v-bind="$attrs" @keydown="onListKeydown">
+	<v-list v-if="markers.size" density="compact" v-bind="$attrs" @keydown="onListKeydown">
 		<MarkerListItem v-for="[id, marker] in markers" :key="id" :marker="marker" :id="id"></MarkerListItem>
-		<button type="button" ref="showMoreButton" v-if="viewLimit < total" @click.prevent="showMore">{{ messageShowMore }}</button>
-	</RadioList>
+		<v-btn v-if="viewLimit < total" ref="showMoreButton" variant="text" block class="mt-1" @click.prevent="showMore">
+			{{ messageShowMore }}
+		</v-btn>
+	</v-list>
 	<div v-else-if="searchQuery" class="section__skeleton" v-bind="$attrs">{{ messageSkeletonMarkersSearch }}</div>
 	<div v-else class="section__skeleton" v-bind="$attrs">{{ messageSkeletonMarkers }}</div>
 </template>
 
 <script lang="ts">
-import {defineComponent, onMounted, reactive, ref, computed, onUnmounted, watch} from 'vue';
+import {defineComponent, onMounted, reactive, ref, computed, onUnmounted, watch, ComponentPublicInstance} from 'vue';
 import debounce from 'lodash.debounce';
 import {LiveAtlasMarkerSet, LiveAtlasMarker} from "@/index";
 import {DynmapMarkerUpdate} from "@/dynmap";
 import {useStore} from "@/store";
 import {nonReactiveState} from "@/store/state";
 import {registerSetUpdateHandler, unregisterSetUpdateHandler} from "@/util/markers";
-import RadioList from "@/components/util/RadioList.vue";
 import MarkerListItem from "@/components/list/MarkerListItem.vue";
 
 export default defineComponent({
 	name: 'MarkerList',
 	components: {
 		MarkerListItem,
-		RadioList,
 	},
 
 	props: {
@@ -67,7 +67,7 @@ export default defineComponent({
 			setContents = nonReactiveState.markers.get(props.markerSet.id)!,
 			searchQuery = ref(""),
 			markers = ref<Map<string, LiveAtlasMarker>>(new Map()),
-			showMoreButton = ref<HTMLButtonElement | null>(null),
+			showMoreButton = ref<ComponentPublicInstance | null>(null),
 			total = ref(0),
 			unfilteredTotal = ref(0),
 			viewLimit = ref(50),
@@ -106,9 +106,15 @@ export default defineComponent({
 		};
 
 		const showMore = () => {
-			const lastLabel = (showMoreButton.value as HTMLButtonElement).previousElementSibling as HTMLLabelElement;
+			const btn = showMoreButton.value?.$el as HTMLElement | undefined;
+			const lastItem = btn?.previousElementSibling as HTMLElement | undefined;
 			viewLimit.value += 50;
-			focusFrame = requestAnimationFrame(() => (lastLabel.nextElementSibling as HTMLInputElement).focus());
+			if (lastItem) {
+				focusFrame = requestAnimationFrame(() => {
+					const nextItem = lastItem.nextElementSibling as HTMLElement | null;
+					nextItem?.focus();
+				});
+			}
 		};
 
 		const handleUpdate = (update: DynmapMarkerUpdate) => {

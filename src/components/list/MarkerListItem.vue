@@ -15,18 +15,17 @@
   -->
 
 <template>
-	<input :id="`marker-${id}`" type="radio" name="marker" v-bind:value="id" @click.prevent="pan">
-	<label :for="`marker-${id}`" class="marker" :title="marker.tooltip" @click.prevent="pan">
-		<img width="16" height="16" v-if="icon" class="marker__icon" :src="icon" alt="" />
-		<SvgIcon v-else :name="defaultIcon" class="marker__icon"></SvgIcon>
-		<span class="marker__label">{{ marker.tooltip || messageUnnamed }}</span>
-		<span class="marker__location">X: {{ location.x }}, Z: {{ location.z }}</span>
-	</label>
+	<v-list-item :title="marker.tooltip || messageUnnamed" :subtitle="locationText" @click="pan">
+		<template #prepend>
+			<img v-if="icon" width="16" height="16" class="marker__icon" :src="icon" alt="" />
+			<SvgIcon v-else :name="defaultIcon" class="marker__icon" />
+		</template>
+	</v-list-item>
 </template>
 
 <script lang="ts">
 import {defineComponent, computed} from 'vue';
-import {useStore} from "vuex";
+import {useStore} from "@/store";
 import {LiveAtlasMarker, LiveAtlasPathMarker, LiveAtlasPointMarker} from "@/index";
 import {MutationTypes} from "@/store/mutation-types";
 import SvgIcon from "@/components/SvgIcon.vue";
@@ -49,10 +48,11 @@ export default defineComponent({
 	setup(props) {
 		const store = useStore(),
 			messageUnnamed = computed(() => store.state.messages.markersUnnamed),
-			location = computed(() => ({
-				x: Math.round(props.marker.location.x),
-				z: Math.round(props.marker.location.z),
-			})),
+			locationText = computed(() => {
+				const x = Math.round(props.marker.location.x);
+				const z = Math.round(props.marker.location.z);
+				return `X: ${x}, Z: ${z}`;
+			}),
 			icon = computed(() => {
 				if('iconUrl' in props.marker) {
 					return (props.marker as LiveAtlasPointMarker).iconUrl;
@@ -94,28 +94,25 @@ export default defineComponent({
 			defaultIcon,
 			messageUnnamed,
 			pan,
-			location,
+			locationText,
 		}
 	}
 });
 </script>
 
 <style lang="scss" scoped>
-	input[type=radio] + .marker {
-		padding-left: 3.9rem;
+	.marker__icon {
+		width: 1.6rem;
+		height: 1.6rem;
+		margin-right: 0.8rem;
+	}
 
-		.marker__icon {
-			max-width: 1.6rem;
-			position: absolute;
-			top: 0;
-			left: 0.8rem;
-			bottom: 0;
-			margin: auto;
-		}
+	:deep(.v-list-item-title) {
+		font-size: 1.5rem;
+	}
 
-		.marker__location {
-			font-size: 1.4rem;
-			font-family: monospace;
-		}
+	:deep(.v-list-item-subtitle) {
+		font-size: 1.3rem;
+		font-family: monospace;
 	}
 </style>

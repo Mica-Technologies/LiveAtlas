@@ -15,14 +15,13 @@
   -->
 
 <template>
-	<input :id="`player-${player.name}`" type="radio" name="player" v-bind:value="player.name" v-model="followTarget"
-         @click.prevent="onInputClick"/>
-  <label :for="`player-${player.name}`"
-         :class="{'player': true, 'player--hidden' : !!player.hidden, 'player--other-world': otherWorld}" :title="title"
-         @click.prevent="onLabelClick">
-		<PlayerImage v-if="imagesEnabled" :player="player" width="16" height="16" class="player__icon" aria-hidden="true"></PlayerImage>
-		<span class="player__name" v-html="player.displayName"></span>
-	</label>
+	<v-list-item :active="isFollowing" :title="player.displayName"
+		:class="{'player--hidden': !!player.hidden, 'player--other-world': otherWorld}"
+		@click="onClick" @dblclick="follow">
+		<template #prepend>
+			<PlayerImage v-if="imagesEnabled" :player="player" width="16" height="16" class="player__icon" aria-hidden="true" />
+		</template>
+	</v-list-item>
 </template>
 
 <script lang="ts">
@@ -51,17 +50,7 @@ export default defineComponent({
 					&& (!store.state.currentWorld || store.state.currentWorld.name !== props.player.location.world);
 			}),
 
-			title = computed(() => {
-				if(props.player.hidden) {
-					return store.state.messages.playersTitleHidden;
-				} else if(otherWorld.value) {
-					return store.state.messages.playersTitleOtherWorld;
-				} else {
-					return store.state.messages.playersTitle;
-				}
-			}),
-
-			followTarget = computed(() => store.state.followTarget?.name),
+			isFollowing = computed(() => store.state.followTarget?.name === props.player.name),
 
 			pan = () => {
 				if(!props.player.hidden) {
@@ -71,18 +60,8 @@ export default defineComponent({
 
 			follow = () => store.commit(MutationTypes.SET_FOLLOW_TARGET, props.player),
 
-			onInputClick = (e: MouseEvent) => {
-				e.preventDefault();
-
+			onClick = (e: MouseEvent) => {
 				if(e.shiftKey) {
-					follow();
-				} else {
-					pan();
-				}
-			},
-
-			onLabelClick = (e: MouseEvent) => {
-				if(e.shiftKey || e.detail === 2) {
 					follow();
 				} else {
 					pan();
@@ -91,11 +70,10 @@ export default defineComponent({
 
 		return {
 			imagesEnabled,
-			title,
 			otherWorld,
-			followTarget,
-			onInputClick,
-			onLabelClick
+			isFollowing,
+			onClick,
+			follow,
 		}
 	},
 
@@ -103,36 +81,26 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-	@import '../../scss/mixins';
+	:deep(.v-list-item-title) {
+		font-size: 1.5rem;
+	}
 
-	.player {
-		display: flex !important;
-		align-items: center;
+	.player--hidden,
+	.player--other-world {
+		opacity: 0.5;
 
+		&:hover {
+			opacity: 1;
+		}
+	}
+
+	.player--hidden {
 		.player__icon {
-			position: relative;
-			pointer-events: none;
-			z-index: 2;
-			padding-right: 1.5rem;
+			filter: grayscale(1);
 		}
+	}
 
-		&.player--hidden:not(:hover),
-		&.player--other-world:not(:hover) {
-			.player__name {
-				opacity: 0.5;
-			}
-		}
-
-		&.player--hidden {
-			.player__icon {
-				filter: grayscale(1);
-			}
-		}
-
-		&:hover, &:focus, &:active {
-			.player__name ::v-deep(span) {
-				color: inherit !important;
-			}
-		}
+	.player__icon {
+		margin-right: 0.8rem;
 	}
 </style>

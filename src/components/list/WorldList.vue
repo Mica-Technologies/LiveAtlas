@@ -15,9 +15,9 @@
   -->
 
 <template>
-	<RadioList v-if="worlds.size" name="map" aria-labelledby="maps-heading">
+	<v-list v-if="worlds.size" density="compact" aria-labelledby="maps-heading">
 		<WorldListItem :world="world" v-for="[name, world] in worlds" :key="`${prefix}_${currentServer}_${name}`"></WorldListItem>
-	</RadioList>
+	</v-list>
 </template>
 
 <script lang="ts">
@@ -25,12 +25,10 @@ import {defineComponent, computed} from 'vue';
 import {LiveAtlasWorldDefinition} from "@/index";
 import {useStore} from "@/store";
 import WorldListItem from './WorldListItem.vue';
-import RadioList from "@/components/util/RadioList.vue";
 
 export default defineComponent({
 	name: 'WorldList',
 	components: {
-		RadioList,
 		WorldListItem
 	},
 
