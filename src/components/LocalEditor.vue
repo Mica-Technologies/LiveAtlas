@@ -412,9 +412,10 @@ export default defineComponent({
 		flex-direction: column;
 		gap: 1rem;
 		padding: 1.5rem;
-		background-color: var(--background-base);
-		backdrop-filter: blur(24px) saturate(1.2);
-		-webkit-backdrop-filter: blur(24px) saturate(1.2);
+		// Opaque background so we don't pay a per-frame backdrop-filter blur
+		// cost while the map is being dragged underneath. The panel is tall
+		// enough that the blur dominated drag perf with the editor open.
+		background-color: var(--background-base-solid);
 		border: 1px solid var(--border-color);
 		border-left: 3px solid #f6a623;
 		border-radius: var(--border-radius);
