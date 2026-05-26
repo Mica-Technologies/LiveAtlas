@@ -142,6 +142,14 @@ export default defineComponent({
 			return markers.value.filter(m => m.worldName === currentWorld.value!.name);
 		});
 
+		// Joined signature of every visible marker — the watch source below.
+		// Reading markerSignature(m) inside this computed creates reactive
+		// deps on every field the renderer cares about (label, style,
+		// points, etc.), so editing any of them in the form re-triggers
+		// reconcile without the cost of {deep: true} on the marker array.
+		const visibleMarkersFingerprint = computed(() =>
+			visibleMarkers.value.map(m => `${m.id}=${markerSignature(m)}`).join('|'));
+
 		// Memoized snap-target list — recomputed only when the marker array
 		// or the current world changes, not on every mousemove.
 		const snapTargets = computed((): Coordinate[] => {
@@ -560,8 +568,9 @@ export default defineComponent({
 			document.body.classList.remove('local-editor-picking');
 		};
 
-		// Marker / selection changes drive the diff reconcile (no deep walk).
-		watch([visibleMarkers, selectedId], reconcile);
+		// Marker / selection changes drive the diff reconcile. The fingerprint
+		// covers add/remove plus any per-marker property the renderer reads.
+		watch([visibleMarkersFingerprint, selectedId], reconcile);
 
 		// Projection change → drop cached layers and rebuild from scratch.
 		watch(currentMap, rebuildAll);
