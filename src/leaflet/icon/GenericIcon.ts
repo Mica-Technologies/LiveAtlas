@@ -51,7 +51,6 @@ const defaultOptions: GenericIconOptions = {
 
 export class GenericIcon extends Layer implements Icon<GenericIconOptions> {
 	declare options: GenericIconOptions;
-	declare createShadow: (oldIcon?: HTMLElement) => HTMLElement;
 
 	private _image?: HTMLImageElement;
 	private _label?: HTMLSpanElement;
@@ -64,6 +63,14 @@ export class GenericIcon extends Layer implements Icon<GenericIconOptions> {
 	constructor(options: GenericIconOptions) {
 		super(options as LayerOptions);
 		Util.setOptions(this, Object.assign(defaultOptions, options));
+	}
+
+	// Upstream Leaflet's Marker._initIcon calls icon.createShadow() while
+	// rendering. We never use marker shadows; Leaflet's runtime accepts
+	// null and skips shadow handling — the typed signature is just too
+	// strict. (The JLyne fork stripped the call entirely.)
+	createShadow(_oldShadow?: HTMLElement): HTMLElement {
+		return null as unknown as HTMLElement;
 	}
 
 	createIcon(oldIcon: HTMLElement) {

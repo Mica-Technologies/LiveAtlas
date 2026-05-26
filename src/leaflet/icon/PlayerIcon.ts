@@ -36,7 +36,6 @@ export interface PlayerIconOptions extends BaseIconOptions {
 
 export class PlayerIcon extends Layer implements Icon<PlayerIconOptions> {
 	declare options: PlayerIconOptions;
-	declare createShadow: (oldIcon?: HTMLElement) => HTMLElement;
 
 	private readonly _player: LiveAtlasPlayer;
 	private _container?: HTMLDivElement;
@@ -56,6 +55,14 @@ export class PlayerIcon extends Layer implements Icon<PlayerIconOptions> {
 		super(options as LayerOptions);
 		Util.setOptions(this, options);
 		this._player = player;
+	}
+
+	// Upstream Leaflet's Marker._initIcon calls icon.createShadow() while
+	// rendering. We never use marker shadows; Leaflet's runtime accepts
+	// null and skips shadow handling — the typed signature is just too
+	// strict. (The JLyne fork stripped the call entirely.)
+	createShadow(_oldShadow?: HTMLElement): HTMLElement {
+		return null as unknown as HTMLElement;
 	}
 
 	createIcon() {
