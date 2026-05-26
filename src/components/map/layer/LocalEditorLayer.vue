@@ -16,7 +16,7 @@
 
 <script lang="ts">
 import {computed, defineComponent, onMounted, onUnmounted, watch} from "vue";
-import {CircleMarker, Layer, LayerGroup, LeafletMouseEvent, Path} from "leaflet";
+import {CircleMarker, Layer, LayerGroup, LeafletMouseEvent, Path, SVG} from "leaflet";
 import {useStore} from "@/store";
 import {MutationTypes} from "@/store/mutation-types";
 import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
@@ -63,6 +63,14 @@ const SNAP_INDICATOR_STYLE = {
 	weight: 2,
 } as const;
 
+const EDITOR_PANE = 'local-editor';
+
+// Shared SVG renderer for every pending shape. SVG uses CSS transforms
+// during pan/zoom (no per-frame redraw) — unlike the canvas renderer the
+// rest of the map uses (preferCanvas: true). Keeps the editor's shapes
+// off the shared-canvas redraw path during drags.
+const editorRenderer = new SVG({pane: EDITOR_PANE});
+
 const pathLeafletOptions = (style: PathStyle, selected: boolean) => ({
 	color: style.lineColor,
 	opacity: style.lineOpacity,
@@ -70,11 +78,15 @@ const pathLeafletOptions = (style: PathStyle, selected: boolean) => ({
 	fillColor: style.fillColor,
 	fillOpacity: style.fillOpacity,
 	dashArray: selected ? undefined : '6,4',
-	pane: 'vectors',
+	pane: EDITOR_PANE,
+	renderer: editorRenderer,
 });
 
-const pointLayerOptions = (selected: boolean) =>
-	selected ? POINT_SELECTED_STYLE : POINT_STYLE;
+const pointLayerOptions = (selected: boolean) => ({
+	...(selected ? POINT_SELECTED_STYLE : POINT_STYLE),
+	pane: EDITOR_PANE,
+	renderer: editorRenderer,
+});
 
 // Cheap stable string capturing every property whose change requires
 // rebuilding the Leaflet layer. Selection state is intentionally NOT
@@ -352,7 +364,11 @@ export default defineComponent({
 
 		const updateSnapIndicator = (latLng: any) => {
 			if(!snapIndicator) {
-				snapIndicator = new CircleMarker(latLng, SNAP_INDICATOR_STYLE);
+				snapIndicator = new CircleMarker(latLng, {
+					...SNAP_INDICATOR_STYLE,
+					pane: EDITOR_PANE,
+					renderer: editorRenderer,
+				});
 				layerGroup.addLayer(snapIndicator);
 			} else {
 				snapIndicator.setLatLng(latLng);
@@ -471,6 +487,14 @@ export default defineComponent({
 		});
 
 		onMounted(() => {
+			// Ensure the editor pane exists before any layers reference it.
+			// Z-index 650 puts editor shapes above the regular marker panes
+			// (default 400-600) but at the same level as tooltips — fine
+			// since tooltips don't overlap the shapes most of the time.
+			if(!props.leaflet.getPane(EDITOR_PANE)) {
+				const pane = props.leaflet.createPane(EDITOR_PANE);
+				pane.style.zIndex = '650';
+			}
 			props.leaflet.addLayer(layerGroup);
 			props.leaflet.on('click', onMapClick);
 			window.addEventListener('keydown', onKeydown);
