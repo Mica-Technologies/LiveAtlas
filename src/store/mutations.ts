@@ -126,6 +126,8 @@ export type Mutations<S = State> = {
 	[MutationTypes.LOCAL_EDITOR_START_PICKING](state: S, payload: {markerId: string, target: 'line' | 'fill'}): void
 	[MutationTypes.LOCAL_EDITOR_FINISH_PICKING](state: S): void
 	[MutationTypes.LOCAL_EDITOR_SET_SNAP](state: S, enabled: boolean): void
+	[MutationTypes.LOCAL_EDITOR_SET_HOVER_LOCATION](state: S, location: Coordinate | undefined): void
+	[MutationTypes.LOCAL_EDITOR_SET_SHOW_VERTEX_NUMBERS](state: S, enabled: boolean): void
 	[MutationTypes.LOCAL_EDITOR_ADD_SET](state: S, set: LocalEditorSet): void
 	[MutationTypes.LOCAL_EDITOR_UPDATE_SET](state: S, payload: {id: string, patch: Partial<LocalEditorSet>}): void
 	[MutationTypes.LOCAL_EDITOR_DELETE_SET](state: S, id: string): void
@@ -753,6 +755,14 @@ export const mutations: MutationTree<State> & Mutations = {
 
 	[MutationTypes.LOCAL_EDITOR_SET_SNAP](state: State, enabled: boolean): void {
 		state.localEditor.snapEnabled = enabled;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_SET_HOVER_LOCATION](state: State, location: Coordinate | undefined): void {
+		state.localEditor.hoverLocation = location;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_SET_SHOW_VERTEX_NUMBERS](state: State, enabled: boolean): void {
+		state.localEditor.showVertexNumbers = enabled;
 	},
 
 	[MutationTypes.LOCAL_EDITOR_ADD_SET](state: State, set: LocalEditorSet): void {

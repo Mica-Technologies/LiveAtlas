@@ -78,6 +78,8 @@ export enum MutationTypes {
 	LOCAL_EDITOR_QUEUE_DELETE = 'localEditorQueueDelete',
 	LOCAL_EDITOR_TOGGLE_DELETE = 'localEditorToggleDelete',
 	LOCAL_EDITOR_DISCARD_EDIT = 'localEditorDiscardEdit',
+	LOCAL_EDITOR_SET_HOVER_LOCATION = 'localEditorSetHoverLocation',
+	LOCAL_EDITOR_SET_SHOW_VERTEX_NUMBERS = 'localEditorSetShowVertexNumbers',
 	LOCAL_EDITOR_START_DRAWING = 'localEditorStartDrawing',
 	LOCAL_EDITOR_FINISH_DRAWING = 'localEditorFinishDrawing',
 	LOCAL_EDITOR_START_PICKING = 'localEditorStartPicking',

@@ -18,6 +18,11 @@
 	<aside v-if="active" class="local-editor" role="complementary" aria-label="Local marker editor">
 		<header class="local-editor__header">
 			<h2 class="local-editor__title">Local Editor</h2>
+			<span class="local-editor__hover-coords" :class="{'local-editor__hover-coords--empty': !hoverCoords}"
+				title="Cursor coordinates">
+				<template v-if="hoverCoords">{{ hoverCoords }}</template>
+				<template v-else>—, —, —</template>
+			</span>
 			<v-btn icon variant="text" size="small" title="Close editor" @click="close">
 				<SvgIcon name="cross" />
 			</v-btn>
@@ -40,10 +45,17 @@
 			in this browser until you generate commands.
 		</p>
 
-		<label class="local-editor__snap-toggle">
-			<v-checkbox-btn :model-value="snapEnabled" @update:model-value="setSnap" density="compact" hide-details />
-			<span>Snap to nearby vertices</span>
-		</label>
+		<div class="local-editor__toggles">
+			<label class="local-editor__snap-toggle">
+				<v-checkbox-btn :model-value="snapEnabled" @update:model-value="setSnap" density="compact" hide-details />
+				<span>Snap to nearby vertices</span>
+			</label>
+			<label class="local-editor__snap-toggle">
+				<v-checkbox-btn :model-value="showVertexNumbers" @update:model-value="setShowVertexNumbers"
+					density="compact" hide-details />
+				<span>Show vertex numbers</span>
+			</label>
+		</div>
 
 		<LocalEditorSets />
 
@@ -272,7 +284,17 @@ export default defineComponent({
 			currentWorldName = computed(() => store.state.currentWorld?.name),
 			markerSets = computed(() => store.state.markerSets),
 			drawing = computed(() => store.state.localEditor.drawing),
-			snapEnabled = computed(() => store.state.localEditor.snapEnabled);
+			snapEnabled = computed(() => store.state.localEditor.snapEnabled),
+			showVertexNumbers = computed(() => store.state.localEditor.showVertexNumbers),
+			hoverLocation = computed(() => store.state.localEditor.hoverLocation);
+
+		// Format the cursor coords as "X, Y, Z" with the same rounding the
+		// regular bottom-left CoordinatesControl uses.
+		const hoverCoords = computed(() => {
+			const l = hoverLocation.value;
+			if(!l) return '';
+			return `${Math.round(l.x)}, ${Math.round(l.y)}, ${Math.round(l.z)}`;
+		});
 
 		const setOptions = computed(() => {
 			const opts = new Set<string>();
@@ -514,6 +536,10 @@ export default defineComponent({
 			store.commit(MutationTypes.LOCAL_EDITOR_SET_SNAP, enabled);
 		};
 
+		const setShowVertexNumbers = (enabled: boolean) => {
+			store.commit(MutationTypes.LOCAL_EDITOR_SET_SHOW_VERTEX_NUMBERS, !!enabled);
+		};
+
 		return {
 			active,
 			markers,
@@ -527,6 +553,9 @@ export default defineComponent({
 			markerSummary,
 			drawing,
 			snapEnabled,
+			showVertexNumbers,
+			hoverCoords,
+			setShowVertexNumbers,
 
 			editingId,
 			editingIdError,
@@ -596,6 +625,29 @@ export default defineComponent({
 			margin: 0;
 			font-size: 1.8rem;
 			font-weight: 500;
+		}
+
+		&__hover-coords {
+			flex: 1 1 auto;
+			margin: 0 1rem;
+			font-family: monospace;
+			font-size: 1.25rem;
+			color: var(--text-base);
+			text-align: right;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+
+			&--empty {
+				color: var(--text-disabled);
+			}
+		}
+
+		&__toggles {
+			display: flex;
+			flex-wrap: wrap;
+			column-gap: 1.2rem;
+			row-gap: 0.3rem;
 		}
 
 		&__hint {

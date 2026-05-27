@@ -75,6 +75,13 @@ export interface LocalEditorState {
 		target: LocalEditorPickTarget;
 	};
 	snapEnabled: boolean;
+	// Last in-game coords the cursor was hovered over. Published from the
+	// editor layer's mousemove and read by the editor panel so the user
+	// can see coords even when the bottom-left control is covered.
+	hoverLocation?: Coordinate;
+	// Show numeric labels on every area/line vertex, not just the selected
+	// marker's vertices. Helps cross-reference between map and form.
+	showVertexNumbers: boolean;
 }
 
 export type State = {
@@ -297,6 +304,8 @@ export const state: State = {
 		drawing: undefined,
 		picking: undefined,
 		snapEnabled: true,
+		hoverLocation: undefined,
+		showVertexNumbers: false,
 	},
 };
 

@@ -16,7 +16,7 @@
 
 <script lang="ts">
 import {computed, defineComponent, onMounted, onUnmounted, watch} from "vue";
-import {CircleMarker, Layer, LayerGroup, LeafletMouseEvent, Path, SVG} from "leaflet";
+import {CircleMarker, DivIcon, Layer, LayerGroup, LeafletMouseEvent, Marker, Path, SVG} from "leaflet";
 import {useStore} from "@/store";
 import {MutationTypes} from "@/store/mutation-types";
 import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
@@ -132,8 +132,12 @@ export default defineComponent({
 			drawing = computed(() => store.state.localEditor.drawing),
 			picking = computed(() => store.state.localEditor.picking),
 			snapEnabled = computed(() => store.state.localEditor.snapEnabled),
+			showVertexNumbers = computed(() => store.state.localEditor.showVertexNumbers),
 			layerGroup = new LayerGroup(),
-			layerCache = new Map<string, CachedLayer>();
+			layerCache = new Map<string, CachedLayer>(),
+			// Separate group for the small numeric vertex labels. Kept apart
+			// from layerCache so its lifecycle doesn't tangle with shape diffing.
+			vertexLabelGroup = new LayerGroup();
 
 		let snapIndicator: CircleMarker | undefined;
 
@@ -350,6 +354,46 @@ export default defineComponent({
 			}
 			layerCache.clear();
 			reconcile();
+			reconcileVertexLabels();
+		};
+
+		// Whether the given marker should sprout numeric vertex labels.
+		// Always on for the currently-selected area/line; otherwise gated
+		// behind the global "Show vertex numbers" toggle.
+		const shouldLabel = (m: LocalEditorMarker): boolean => {
+			if(m.type !== 'area' && m.type !== 'line') return false;
+			if(m.origin === 'delete') return false;
+			if(showVertexNumbers.value) return true;
+			return m.id === selectedId.value;
+		};
+
+		// Cheap clear-and-rebuild for the vertex labels. Cheaper than diffing
+		// since they're DivIcons with negligible per-instance cost, and they
+		// only update when selection, toggle, or geometry changes.
+		const reconcileVertexLabels = () => {
+			vertexLabelGroup.clearLayers();
+			const map = currentMap.value;
+			if(!map) return;
+			for(const m of visibleMarkers.value) {
+				if(!shouldLabel(m)) continue;
+				if(m.type !== 'area' && m.type !== 'line') continue;
+				const points = m.points;
+				for(let i = 0; i < points.length; i++) {
+					const latLng = map.locationToLatLng(points[i]);
+					const icon = new DivIcon({
+						className: 'local-editor-vertex-label',
+						html: `<span>${i + 1}</span>`,
+						iconSize: [18, 18],
+						iconAnchor: [9, 9],
+					});
+					vertexLabelGroup.addLayer(new Marker(latLng, {
+						icon,
+						interactive: false,
+						keyboard: false,
+						pane: 'tooltipPane',
+					}));
+				}
+			}
 		};
 
 		// Snap a clicked location to a nearby existing vertex (XZ only)
@@ -570,7 +614,13 @@ export default defineComponent({
 
 		// Marker / selection changes drive the diff reconcile. The fingerprint
 		// covers add/remove plus any per-marker property the renderer reads.
-		watch([visibleMarkersFingerprint, selectedId], reconcile);
+		watch([visibleMarkersFingerprint, selectedId], () => {
+			reconcile();
+			reconcileVertexLabels();
+		});
+
+		// Toggle changes for vertex numbers don't affect shapes, just labels.
+		watch(showVertexNumbers, reconcileVertexLabels);
 
 		// Projection change → drop cached layers and rebuild from scratch.
 		watch(currentMap, rebuildAll);
@@ -603,6 +653,35 @@ export default defineComponent({
 			}
 		});
 
+		// Passive hover-location tracker — publishes the cursor's in-game
+		// coords to the store so the editor panel can show them (the panel
+		// covers the bottom-left CoordinatesControl). Throttled via AF so a
+		// fast mousemove doesn't thrash reactivity.
+		let hoverFrame = 0;
+		let lastHoverEvent: LeafletMouseEvent | null = null;
+		const publishHover = () => {
+			hoverFrame = 0;
+			if(!lastHoverEvent || !currentMap.value || !currentWorld.value) return;
+			const loc = currentMap.value.latLngToLocation(
+				lastHoverEvent.latlng, currentWorld.value.seaLevel + 1);
+			store.commit(MutationTypes.LOCAL_EDITOR_SET_HOVER_LOCATION, loc);
+		};
+		const onHoverMove = (e: LeafletMouseEvent) => {
+			// Skip work when the editor panel is closed — nothing reads
+			// hoverLocation in that state.
+			if(!store.state.localEditor.active) return;
+			lastHoverEvent = e;
+			if(!hoverFrame) hoverFrame = requestAnimationFrame(publishHover);
+		};
+		const onHoverOut = () => {
+			lastHoverEvent = null;
+			if(hoverFrame) {
+				cancelAnimationFrame(hoverFrame);
+				hoverFrame = 0;
+			}
+			store.commit(MutationTypes.LOCAL_EDITOR_SET_HOVER_LOCATION, undefined);
+		};
+
 		onMounted(() => {
 			// Ensure the editor pane exists before any layers reference it.
 			// Z-index 650 puts editor shapes above the regular marker panes
@@ -613,18 +692,26 @@ export default defineComponent({
 				pane.style.zIndex = '650';
 			}
 			props.leaflet.addLayer(layerGroup);
+			props.leaflet.addLayer(vertexLabelGroup);
 			props.leaflet.on('click', onMapClick);
+			props.leaflet.on('mousemove', onHoverMove);
+			props.leaflet.on('mouseout', onHoverOut);
 			window.addEventListener('keydown', onKeydown);
 			reconcile();
+			reconcileVertexLabels();
 		});
 
 		onUnmounted(() => {
 			detachPickHandlers();
 			props.leaflet.removeLayer(layerGroup);
+			props.leaflet.removeLayer(vertexLabelGroup);
 			props.leaflet.off('click', onMapClick);
 			props.leaflet.off('mousemove', onMapMouseMove);
+			props.leaflet.off('mousemove', onHoverMove);
+			props.leaflet.off('mouseout', onHoverOut);
 			window.removeEventListener('keydown', onKeydown);
 			if(pendingMoveFrame) cancelAnimationFrame(pendingMoveFrame);
+			if(hoverFrame) cancelAnimationFrame(hoverFrame);
 			layerCache.clear();
 		});
 	},
@@ -645,6 +732,29 @@ export default defineComponent({
 
 		&::before {
 			border-top-color: #f6a623 !important;
+		}
+	}
+
+	// Small numeric labels rendered at each vertex of a selected (or all,
+	// when toggled) area/line, so the user can cross-reference the form's
+	// vertex list with the shape on the map.
+	.local-editor-vertex-label {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		pointer-events: none;
+		background: rgba(20, 20, 20, 0.85);
+		color: #f6a623;
+		border: 1px solid #f6a623;
+		border-radius: 50%;
+		font-size: 1.05rem;
+		font-weight: 700;
+		font-family: monospace;
+		line-height: 1;
+		box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+
+		span {
+			padding: 0 0.1rem;
 		}
 	}
 
