@@ -16,7 +16,7 @@
 
 <script lang="ts">
 import {computed, defineComponent, onMounted, onUnmounted, watch} from "vue";
-import {CircleMarker, DivIcon, Layer, LayerGroup, LeafletMouseEvent, Marker, Path, SVG} from "leaflet";
+import {CircleMarker, DivIcon, LatLng, Layer, LayerGroup, LeafletMouseEvent, Marker, Path, SVG} from "leaflet";
 import {useStore} from "@/store";
 import {MutationTypes} from "@/store/mutation-types";
 import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
@@ -137,7 +137,11 @@ export default defineComponent({
 			layerCache = new Map<string, CachedLayer>(),
 			// Separate group for the small numeric vertex labels. Kept apart
 			// from layerCache so its lifecycle doesn't tangle with shape diffing.
-			vertexLabelGroup = new LayerGroup();
+			vertexLabelGroup = new LayerGroup(),
+			// Edit handles (drag-to-move vertices, click-segment-to-insert,
+			// circle center/radius drags). Lifecycle is selection-driven —
+			// only the currently-selected editable marker has handles.
+			handleGroup = new LayerGroup();
 
 		let snapIndicator: CircleMarker | undefined;
 
@@ -396,6 +400,181 @@ export default defineComponent({
 			}
 		};
 
+		// While a handle is being dragged, suppress handle rebuilds — the
+		// handle is being moved by the user; nuking it mid-drag would lose
+		// the user's grip. The path layer is rebuilt independently from
+		// geometry-fingerprint changes, so the shape still follows.
+		let handleDragInFlight = false;
+
+		const commitPointMove = (markerId: string, index: number, latLng: LatLng) => {
+			const map = currentMap.value;
+			if(!map) return;
+			const current = markers.value.find(m => m.id === markerId);
+			if(!current || (current.type !== 'area' && current.type !== 'line')) return;
+			// Preserve the original Y; drags only change XZ.
+			const oldY = current.points[index]?.y ?? 64;
+			const newCoord = map.latLngToLocation(latLng, oldY);
+			const updated = current.points.map((p, i) => i === index ? newCoord : p);
+			store.commit(MutationTypes.LOCAL_EDITOR_UPDATE_MARKER, {
+				id: markerId, patch: {points: updated},
+			});
+		};
+
+		const commitCenterMove = (markerId: string, latLng: LatLng) => {
+			const map = currentMap.value;
+			if(!map) return;
+			const current = markers.value.find(m => m.id === markerId);
+			if(!current) return;
+			const oldY = current.type === 'circle' ? current.center.y
+				: current.type === 'point' ? current.location.y : 64;
+			const newCoord = map.latLngToLocation(latLng, oldY);
+			if(current.type === 'circle') {
+				store.commit(MutationTypes.LOCAL_EDITOR_UPDATE_MARKER, {
+					id: markerId, patch: {center: newCoord},
+				});
+			} else if(current.type === 'point') {
+				store.commit(MutationTypes.LOCAL_EDITOR_UPDATE_MARKER, {
+					id: markerId, patch: {location: newCoord},
+				});
+			}
+		};
+
+		const commitRadius = (markerId: string, axis: 'radiusX' | 'radiusZ', latLng: LatLng) => {
+			const map = currentMap.value;
+			if(!map) return;
+			const current = markers.value.find(m => m.id === markerId);
+			if(!current || current.type !== 'circle') return;
+			const here = map.latLngToLocation(latLng, current.center.y);
+			const next = Math.max(0, Math.round(axis === 'radiusX'
+				? Math.abs(here.x - current.center.x)
+				: Math.abs(here.z - current.center.z)));
+			store.commit(MutationTypes.LOCAL_EDITOR_UPDATE_MARKER, {
+				id: markerId, patch: {[axis]: next},
+			});
+		};
+
+		const makeDraggableHandle = (latLng: LatLng, className: string,
+				onDrag: (latLng: LatLng) => void, onDragEnd: () => void): Marker => {
+			const handle = new Marker(latLng, {
+				icon: new DivIcon({className, html: '', iconSize: [14, 14], iconAnchor: [7, 7]}),
+				draggable: true,
+				keyboard: false,
+				autoPan: false,
+				pane: 'tooltipPane',
+			});
+			let dragFrame = 0;
+			let lastLatLng: LatLng | null = null;
+			const flush = () => {
+				dragFrame = 0;
+				if(lastLatLng) onDrag(lastLatLng);
+			};
+			handle.on('dragstart', () => { handleDragInFlight = true; });
+			handle.on('drag', (e: any) => {
+				lastLatLng = e.latlng;
+				if(!dragFrame) dragFrame = requestAnimationFrame(flush);
+			});
+			handle.on('dragend', () => {
+				if(dragFrame) {
+					cancelAnimationFrame(dragFrame);
+					dragFrame = 0;
+				}
+				if(lastLatLng) onDrag(lastLatLng);
+				handleDragInFlight = false;
+				onDragEnd();
+			});
+			return handle;
+		};
+
+		// Insert a vertex into an area/line at the midpoint of the segment
+		// following `segmentIndex`. Areas wrap (last segment closes); lines
+		// don't, so the caller must only emit midpoint handles for valid
+		// segments.
+		const insertVertexAt = (
+			markerId: string, segmentIndex: number, mid: {x: number, y: number, z: number},
+		) => {
+			const current = markers.value.find(m => m.id === markerId);
+			if(!current || (current.type !== 'area' && current.type !== 'line')) return;
+			const updated = [...current.points];
+			updated.splice(segmentIndex + 1, 0, mid);
+			store.commit(MutationTypes.LOCAL_EDITOR_UPDATE_MARKER, {
+				id: markerId, patch: {points: updated},
+			});
+		};
+
+		// Cheap clear-and-rebuild for edit handles. Only fires when selection
+		// changes, drawing/picking flips, or a drag finishes — NOT on every
+		// path-geometry change, so an in-flight drag isn't disrupted.
+		const reconcileHandles = () => {
+			handleGroup.clearLayers();
+			const map = currentMap.value;
+			if(!map) return;
+			if(drawing.value || picking.value) return;
+			const selected = visibleMarkers.value.find(m => m.id === selectedId.value);
+			if(!selected) return;
+			if(selected.origin === 'delete') return;
+
+			if(selected.type === 'area' || selected.type === 'line') {
+				const points = selected.points;
+				// Vertex drag handles
+				for(let i = 0; i < points.length; i++) {
+					const latLng = map.locationToLatLng(points[i]);
+					const idx = i;
+					const h = makeDraggableHandle(latLng, 'local-editor-vertex-handle',
+						(ll) => commitPointMove(selected.id, idx, ll),
+						() => reconcileHandles());
+					handleGroup.addLayer(h);
+				}
+				// Segment midpoint "insert" handles. Areas have N segments
+				// (wrap to close); lines have N-1.
+				const segCount = selected.type === 'area' ? points.length : points.length - 1;
+				for(let i = 0; i < segCount; i++) {
+					const a = points[i];
+					const b = points[(i + 1) % points.length];
+					const mid = {x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2};
+					const latLng = map.locationToLatLng(mid);
+					const icon = new DivIcon({
+						className: 'local-editor-insert-handle',
+						html: '+',
+						iconSize: [12, 12], iconAnchor: [6, 6],
+					});
+					const handle = new Marker(latLng, {
+						icon, keyboard: false, pane: 'tooltipPane',
+						bubblingMouseEvents: false,
+					});
+					const segIdx = i;
+					handle.on('click', (e: LeafletMouseEvent) => {
+						(e.originalEvent as MouseEvent | undefined)?.stopPropagation();
+						insertVertexAt(selected.id, segIdx, mid);
+						reconcileHandles();
+					});
+					handleGroup.addLayer(handle);
+				}
+			} else if(selected.type === 'circle') {
+				const center = selected.center;
+				const centerLL = map.locationToLatLng(center);
+				handleGroup.addLayer(makeDraggableHandle(centerLL, 'local-editor-center-handle',
+					(ll) => commitCenterMove(selected.id, ll),
+					() => reconcileHandles()));
+				// East and South radius handles, projected from the in-game
+				// center along the X and Z axes respectively.
+				const eastLL = map.locationToLatLng({
+					x: center.x + selected.radiusX, y: center.y, z: center.z,
+				});
+				const southLL = map.locationToLatLng({
+					x: center.x, y: center.y, z: center.z + selected.radiusZ,
+				});
+				handleGroup.addLayer(makeDraggableHandle(eastLL, 'local-editor-radius-handle',
+					(ll) => commitRadius(selected.id, 'radiusX', ll),
+					() => reconcileHandles()));
+				handleGroup.addLayer(makeDraggableHandle(southLL, 'local-editor-radius-handle',
+					(ll) => commitRadius(selected.id, 'radiusZ', ll),
+					() => reconcileHandles()));
+			}
+			// Point markers keep their existing icon drag interaction via the
+			// form fields — adding a second handle on top of the icon would
+			// just visually overlap with the marker itself.
+		};
+
 		// Snap a clicked location to a nearby existing vertex (XZ only)
 		// if snapping is enabled and Shift isn't held to override.
 		const applySnap = (location: Coordinate, shiftHeld: boolean): Coordinate => {
@@ -617,10 +796,21 @@ export default defineComponent({
 		watch([visibleMarkersFingerprint, selectedId], () => {
 			reconcile();
 			reconcileVertexLabels();
+			// Handle rebuilds are skipped during an in-flight drag — the drag
+			// mutates marker points each AF tick, and rebuilding handles
+			// would yank the one the user is gripping. dragend triggers an
+			// explicit reconcileHandles to catch up.
+			if(handleDragInFlight) return;
+			reconcileHandles();
 		});
 
 		// Toggle changes for vertex numbers don't affect shapes, just labels.
 		watch(showVertexNumbers, reconcileVertexLabels);
+
+		// Handles disappear while drawing or picking is active — those modes
+		// have their own map-click semantics that the handles would conflict
+		// with.
+		watch([drawing, picking], reconcileHandles);
 
 		// Projection change → drop cached layers and rebuild from scratch.
 		watch(currentMap, rebuildAll);
@@ -693,18 +883,21 @@ export default defineComponent({
 			}
 			props.leaflet.addLayer(layerGroup);
 			props.leaflet.addLayer(vertexLabelGroup);
+			props.leaflet.addLayer(handleGroup);
 			props.leaflet.on('click', onMapClick);
 			props.leaflet.on('mousemove', onHoverMove);
 			props.leaflet.on('mouseout', onHoverOut);
 			window.addEventListener('keydown', onKeydown);
 			reconcile();
 			reconcileVertexLabels();
+			reconcileHandles();
 		});
 
 		onUnmounted(() => {
 			detachPickHandlers();
 			props.leaflet.removeLayer(layerGroup);
 			props.leaflet.removeLayer(vertexLabelGroup);
+			props.leaflet.removeLayer(handleGroup);
 			props.leaflet.off('click', onMapClick);
 			props.leaflet.off('mousemove', onMapMouseMove);
 			props.leaflet.off('mousemove', onHoverMove);
@@ -763,5 +956,65 @@ export default defineComponent({
 	body.local-editor-picking,
 	body.local-editor-picking .leaflet-container {
 		cursor: crosshair !important;
+	}
+
+	// Drag-to-move vertex handles on the selected area/line. Filled square
+	// so they read distinct from the numeric labels.
+	.local-editor-vertex-handle {
+		background: #f6a623;
+		border: 2px solid #1d1d1d;
+		border-radius: 2px;
+		box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+		cursor: grab;
+
+		&:active {
+			cursor: grabbing;
+		}
+	}
+
+	// Click-to-insert handles at each segment midpoint. Smaller and dimmer
+	// than the vertex handles, with a + glyph to suggest the action.
+	.local-editor-insert-handle {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(40, 40, 40, 0.85);
+		color: #f6a623;
+		border: 1px dashed #f6a623;
+		border-radius: 50%;
+		font-family: monospace;
+		font-size: 1rem;
+		font-weight: 700;
+		line-height: 1;
+		cursor: pointer;
+		user-select: none;
+
+		&:hover {
+			background: rgba(246, 166, 35, 0.3);
+			color: #fff;
+		}
+	}
+
+	// Center handle for circle/point: round, brighter than vertex handles.
+	.local-editor-center-handle {
+		background: #fff;
+		border: 2px solid #f6a623;
+		border-radius: 50%;
+		box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+		cursor: grab;
+
+		&:active {
+			cursor: grabbing;
+		}
+	}
+
+	// Circle radius handles — distinguish from the center handle so it's
+	// obvious which one resizes vs. moves.
+	.local-editor-radius-handle {
+		background: rgba(246, 166, 35, 0.6);
+		border: 2px solid #1d1d1d;
+		border-radius: 50%;
+		box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+		cursor: ew-resize;
 	}
 </style>
