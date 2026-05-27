@@ -68,6 +68,8 @@ export type Mutations<S = State> = {
 	[MutationTypes.SET_WORLDS](state: S, worlds: Array<LiveAtlasWorldDefinition>): void
 	[MutationTypes.SET_COMPONENTS](state: S, components: LiveAtlasPartialComponentConfig | LiveAtlasComponentConfig): void
 	[MutationTypes.SET_MARKER_SETS](state: S, markerSets: Map<string, LiveAtlasMarkerSet>): void
+	[MutationTypes.SET_MARKER_SET_VISIBILITY](state: S, payload: {id: string, visible: boolean}): void
+	[MutationTypes.SET_URL_VISIBLE_LAYERS](state: S, layers: string[] | undefined): void
 	[MutationTypes.SET_MARKERS](state: S, markers: Map<string, Map<string, LiveAtlasMarker>>): void
 	[MutationTypes.SET_WORLD_STATE](state: S, worldState: LiveAtlasWorldState): void
 	[MutationTypes.ADD_MARKER_SET_UPDATES](state: S, updates: DynmapMarkerSetUpdate[]): void
@@ -244,9 +246,18 @@ export const mutations: MutationTree<State> & Mutations = {
 		state.components = Object.assign(state.components, components);
 	},
 
+	[MutationTypes.SET_MARKER_SET_VISIBILITY](state: State, payload: {id: string, visible: boolean}) {
+		state.markerSetVisibility.set(payload.id, payload.visible);
+	},
+
+	[MutationTypes.SET_URL_VISIBLE_LAYERS](state: State, layers: string[] | undefined) {
+		state.urlVisibleLayers = layers && layers.length ? layers : undefined;
+	},
+
 	//Sets the existing marker sets from the last marker fetch
 	[MutationTypes.SET_MARKER_SETS](state: State, markerSets: Map<string, LiveAtlasMarkerSet>) {
 		state.markerSets.clear();
+		state.markerSetVisibility.clear();
 		state.pendingMarkerUpdates.splice(0);
 		nonReactiveState.markers.clear();
 

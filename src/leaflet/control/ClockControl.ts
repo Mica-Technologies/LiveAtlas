@@ -30,6 +30,25 @@ export interface ClockControlOptions extends ControlOptions {
 	showWeather: boolean;
 }
 
+// Locale-aware time formatter. Resolves the user's preferred hour cycle
+// (24h vs AM/PM) once at module load — Intl.DateTimeFormat without a
+// locale argument uses the runtime's locale. The 'h12' override lets users
+// see "11:00 PM" instead of "23:00" in locales whose default is 24-hour
+// when their actual preference happens to be 12-hour; but here we trust
+// the locale default since that's what the user's whole OS displays.
+const timeFormatter = new Intl.DateTimeFormat(undefined, {
+	hour: 'numeric',
+	minute: '2-digit',
+});
+
+const formatInGameTime = (hours: number, minutes: number): string => {
+	// Build a real Date with the in-game hour/minute so the formatter can
+	// localise it. Date constructor without args is local time-zone safe.
+	const d = new Date();
+	d.setHours(hours, minutes, 0, 0);
+	return timeFormatter.format(d);
+};
+
 /**
  * Leaflet map control providing a clock which can display the current in-game time of day and weather
  */
@@ -126,10 +145,7 @@ export class ClockControl extends Control {
 			if (timeOfDay >= 0) {
 				this._clock!.classList.remove(minecraftTime.night ? 'day' : 'night');
 				this._clock!.classList.add(minecraftTime.day ? 'day' : 'night');
-				this._clock!.textContent = [
-					minecraftTime.hours.toString().padStart(2, '0'),
-					minecraftTime.minutes.toString().padStart(2, '0')
-				].join(':');
+				this._clock!.textContent = formatInGameTime(minecraftTime.hours, minecraftTime.minutes);
 			} else {
 				this._clock!.classList.remove(minecraftTime.night ? 'day' : 'night');
 				this._clock!.textContent = '';

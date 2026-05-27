@@ -22,6 +22,7 @@
 import {defineComponent, computed, onMounted, onUnmounted, watch} from "vue";
 import {LiveAtlasMarkerSet} from "@/index";
 import {useStore} from "@/store";
+import {MutationTypes} from "@/store/mutation-types";
 import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
 import LiveAtlasLayerGroup from "@/leaflet/layer/LiveAtlasLayerGroup";
 import MapMarkers from "@/components/map/marker/MapMarkers.vue";
@@ -74,17 +75,49 @@ export default defineComponent({
 			}
 		}, {deep: true});
 
+		// If the URL we loaded encoded a visible-layers list, honour it —
+		// otherwise fall back to the server's hidden default.
+		const initiallyVisible = (): boolean => {
+			const urlOverride = store.state.urlVisibleLayers;
+			if(urlOverride) return urlOverride.includes(props.markerSet.id);
+			return !props.markerSet.hidden;
+		};
+
+		const reportVisibility = (visible: boolean) => {
+			store.commit(MutationTypes.SET_MARKER_SET_VISIBILITY, {
+				id: props.markerSet.id, visible,
+			});
+		};
+
+		// Map-level overlayadd/overlayremove fire whenever the user toggles
+		// a layer in the control. Filter to our own layerGroup before
+		// reporting to the store.
+		const onOverlayAdd = (e: {layer: unknown}) => {
+			if(e.layer === layerGroup) reportVisibility(true);
+		};
+		const onOverlayRemove = (e: {layer: unknown}) => {
+			if(e.layer === layerGroup) reportVisibility(false);
+		};
+
 		onMounted(() => {
-			if(props.markerSet.hidden) {
-				props.leaflet.getLayerManager()
-					.addHiddenLayer(layerGroup, props.markerSet.label, props.markerSet.priority);
-			} else {
+			const show = initiallyVisible();
+			if(show) {
 				props.leaflet.getLayerManager()
 					.addLayer(layerGroup, true, props.markerSet.label, props.markerSet.priority);
+			} else {
+				props.leaflet.getLayerManager()
+					.addHiddenLayer(layerGroup, props.markerSet.label, props.markerSet.priority);
 			}
+			reportVisibility(show);
+			props.leaflet.on('overlayadd', onOverlayAdd as never);
+			props.leaflet.on('overlayremove', onOverlayRemove as never);
 		});
 
-		onUnmounted(() => props.leaflet.getLayerManager().removeLayer(layerGroup));
+		onUnmounted(() => {
+			props.leaflet.off('overlayadd', onOverlayAdd as never);
+			props.leaflet.off('overlayremove', onOverlayRemove as never);
+			props.leaflet.getLayerManager().removeLayer(layerGroup);
+		});
 
 		return {
 			markerSettings,

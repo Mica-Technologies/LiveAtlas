@@ -95,6 +95,16 @@ export type State = {
 	sortedPlayers: LiveAtlasSortedPlayers;
 	maxPlayers: number;
 	markerSets: Map<string, LiveAtlasMarkerSet>;
+	// Live visibility state for marker-set overlays (true = currently
+	// visible on the map). Updated by MarkerSetLayer on mount and on
+	// Leaflet overlayadd/overlayremove. Read at link-generation time so
+	// a shared URL can encode the visible layers.
+	markerSetVisibility: Map<string, boolean>;
+	// One-shot visibility override applied from a URL on load. While
+	// defined, marker-set layers use this list instead of their server
+	// default `hidden` flag. Cleared on app navigation to avoid stale
+	// state on subsequent server/world switches.
+	urlVisibleLayers?: string[];
 
 	chat: {
 		unread: number;
@@ -176,6 +186,8 @@ export const state: State = {
 	},
 
 	markerSets: new Map(), //Marker sets from world_markers.json, doesn't include the markers themselves for performance reasons
+	markerSetVisibility: new Map(),
+	urlVisibleLayers: undefined,
 
 	pendingMarkerUpdates: [],  //Pending updates to markers/areas/etc
 	pendingTileUpdates: [], //Pending updates to map tiles

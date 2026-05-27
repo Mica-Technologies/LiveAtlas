@@ -146,12 +146,25 @@ export default defineComponent({
 
 			embedBaseUrl = new URLSearchParams(window.location.search).get('embedBaseUrl'),
 
+			// Currently visible marker-set IDs, derived from the live
+			// visibility map maintained by MarkerSetLayer. Snapshot at
+			// link-generation time so a shared URL captures the user's
+			// current view.
+			visibleLayerIds = computed(() => {
+				const visible: string[] = [];
+				for(const [id, isVisible] of store.state.markerSetVisibility) {
+					if(isVisible) visible.push(id);
+				}
+				return visible;
+			}),
+
 			url = computed(() => {
 				if (!currentMap.value) {
 					return '';
 				}
 
-				const hash = getUrlForLocation(currentMap.value, location.value, currentZoom.value);
+				const hash = getUrlForLocation(
+					currentMap.value, location.value, currentZoom.value, visibleLayerIds.value);
 
 				if (embedBaseUrl) {
 					return embedBaseUrl + hash;

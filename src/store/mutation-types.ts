@@ -61,6 +61,9 @@ export enum MutationTypes {
 	SET_LOGGED_IN = 'setLoggedIn',
 	SET_LOGIN_REQUIRED = 'setLoginRequired',
 
+	SET_MARKER_SET_VISIBILITY = 'setMarkerSetVisibility',
+	SET_URL_VISIBLE_LAYERS = 'setUrlVisibleLayers',
+
 	LOCAL_EDITOR_SET_ACTIVE = 'localEditorSetActive',
 	LOCAL_EDITOR_ADD_MARKER = 'localEditorAddMarker',
 	LOCAL_EDITOR_UPDATE_MARKER = 'localEditorUpdateMarker',

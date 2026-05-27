@@ -132,6 +132,10 @@ export default defineComponent({
 					}
 
 					store.commit(MutationTypes.SET_PARSED_URL, parsedUrl);
+					// Hand off the visible-layers list from the URL so the
+					// marker set layers can override their server defaults
+					// when they mount.
+					store.commit(MutationTypes.SET_URL_VISIBLE_LAYERS, parsedUrl.visibleLayers);
 				}
 			},
 

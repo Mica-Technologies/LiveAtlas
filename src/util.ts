@@ -77,7 +77,7 @@ export const parseUrl = (url: URL): LiveAtlasParsedUrl | null => {
  * hash format, otherwise null
  */
 export const parseMapHash = (hash: string): LiveAtlasParsedUrl | null => {
-	let world, map, location, zoom;
+	let world, map, location, zoom, visibleLayers: string[] | undefined;
 
 	hash = hash.replace('#', '');
 
@@ -102,6 +102,19 @@ export const parseMapHash = (hash: string): LiveAtlasParsedUrl | null => {
 				.map(item => parseFloat(item))
 				.filter(item => !isNaN(item) && isFinite(item));
 		zoom = typeof parts[3] !== 'undefined' ? parseInt(parts[3]) : undefined;
+
+		// Optional ;l=id1,id2,id3 segment captures which marker set layers
+		// were visible when the link was shared. Any segment after zoom is
+		// scanned so we don't lock the position in the hash format.
+		for(let i = 4; i < parts.length; i++) {
+			const segment = parts[i];
+			if(segment && segment.startsWith('l=')) {
+				visibleLayers = segment.slice(2).split(',')
+					.map(s => decodeURIComponent(s))
+					.filter(Boolean);
+				break;
+			}
+		}
 	}
 
 	return validateParsedUrl({
@@ -113,6 +126,7 @@ export const parseMapHash = (hash: string): LiveAtlasParsedUrl | null => {
 			z: location[2],
 		} : undefined,
 		zoom,
+		visibleLayers,
 		legacy: false,
 	});
 }
@@ -179,7 +193,12 @@ const validateParsedUrl = (parsed: any) => {
  * @param {number} zoom The zoom level
  * @return {string} The URL hash (including the #), or an empty string if a valid hash cannot be constructed
  */
-export const getUrlForLocation = (map: LiveAtlasMapDefinition, location: Coordinate, zoom: number): string => {
+export const getUrlForLocation = (
+	map: LiveAtlasMapDefinition,
+	location: Coordinate,
+	zoom: number,
+	visibleLayers?: string[],
+): string => {
 	const x = Math.round(location.x),
 			y = Math.round(location.y),
 			z = Math.round(location.z),
@@ -189,7 +208,14 @@ export const getUrlForLocation = (map: LiveAtlasMapDefinition, location: Coordin
 			return '';
 		}
 
-		return `#${map.world.name};${map.name};${locationString};${zoom}`;
+		let hash = `#${map.world.name};${map.name};${locationString};${zoom}`;
+		// Only encode the layer segment when explicitly provided; legacy URLs
+		// (no segment) fall back to server defaults on parse.
+		if(visibleLayers && visibleLayers.length) {
+			const encoded = visibleLayers.map(id => encodeURIComponent(id)).join(',');
+			hash += `;l=${encoded}`;
+		}
+		return hash;
 }
 
 /**

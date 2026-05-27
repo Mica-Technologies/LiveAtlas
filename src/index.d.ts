@@ -177,6 +177,9 @@ interface LiveAtlasParsedUrl {
 	map?: string;
 	location?: Coordinate;
 	zoom?: number;
+	// Marker set IDs that were visible at the time the URL was generated.
+	// Undefined means "use server defaults" (legacy URLs).
+	visibleLayers?: string[];
 	legacy: boolean;
 }
 

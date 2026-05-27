@@ -77,7 +77,15 @@ export const getters: GetterTree<State, State> & Getters = {
 			return '';
 		}
 
-		return getUrlForLocation(state.currentMap, state.currentLocation, state.currentZoom);
+		// Snapshot the visible marker-set IDs into the URL so links share
+		// the same overlay state the user is looking at.
+		const visibleLayers: string[] = [];
+		for(const [id, visible] of state.markerSetVisibility) {
+			if(visible) visibleLayers.push(id);
+		}
+
+		return getUrlForLocation(state.currentMap, state.currentLocation, state.currentZoom,
+			visibleLayers.length ? visibleLayers : undefined);
 	},
 
 	pageTitle(state: State): string {
