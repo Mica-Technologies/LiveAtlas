@@ -14,18 +14,17 @@ export interface ToolsControlOptions extends ControlOptions {
 	onToggleExpanded: () => void;
 	onGotoSubmit: (raw: string, form: HTMLFormElement) => void;
 	onMeasureToggle: () => void;
-	onScreenshot: () => void;
 }
 
 /**
- * One collapsible Leaflet control that houses the three new tools. The
- * Vue wrapper drives state via `setExpanded` / `setMeasureActive` /
- * `setMeasureStatus`; this class only owns the DOM and forwards user
- * input back through the callbacks in {@link ToolsControlOptions}.
+ * Collapsible bottomleft control housing the goto-coordinates input and
+ * the measure-distance toggle. The Vue wrapper drives state via
+ * `setExpanded` / `setMeasureActive` / `setMeasureStatus`; this class
+ * only owns the DOM and forwards user input back through the callbacks
+ * in {@link ToolsControlOptions}.
  *
- * Placed at bottomleft so it stacks naturally with the existing
- * link / chat / login controls and stays out of the top region that
- * embedding hosts cover with a translucent menu bar.
+ * Lives at bottomleft so it stays out of the top region embedding hosts
+ * cover with a translucent menu bar.
  */
 export class ToolsControl extends Control {
 	declare options: ToolsControlOptions;
@@ -43,14 +42,15 @@ export class ToolsControl extends Control {
 	}
 
 	onAdd() {
-		const container = DomUtil.create('div', 'tools-control') as HTMLDivElement;
+		const container = DomUtil.create('div',
+			'popout-control tools-control') as HTMLDivElement;
 		this.container = container;
 		DomEvent.disableClickPropagation(container);
 		DomEvent.disableScrollPropagation(container);
 
-		// The expandable body sits ABOVE the toggle button via flex
-		// column-reverse, so it grows upward from the bottom-left corner.
-		const body = DomUtil.create('div', 'tools-control__body', container) as HTMLDivElement;
+		// Body sits ABOVE the toggle via flex column-reverse, so it grows
+		// upward from the corner.
+		const body = DomUtil.create('div', 'popout-control__body', container) as HTMLDivElement;
 		this.body = body;
 
 		// Go-to coordinates row
@@ -67,26 +67,25 @@ export class ToolsControl extends Control {
 		gotoGo.type = 'submit';
 		gotoGo.title = 'Jump to coordinates';
 		gotoGo.setAttribute('aria-label', 'Jump');
-		gotoGo.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use xlink:href="#icon--link" /></svg>`;
+		gotoGo.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use xlink:href="#icon--arrow" /></svg>`;
 		gotoForm.addEventListener('submit', e => {
 			e.preventDefault();
 			this.options.onGotoSubmit(gotoInput.value, gotoForm);
 		});
-		// Keystrokes inside the input shouldn't trigger map shortcuts.
 		gotoForm.addEventListener('keydown', e => e.stopPropagation());
 		this.gotoInput = gotoInput;
 		this.gotoForm = gotoForm;
 
-		// Action row: measure + screenshot
-		const actions = DomUtil.create('div', 'tools-control__actions', body) as HTMLDivElement;
-
-		const measureBtn = DomUtil.create('button', 'tools-control__action', actions) as HTMLButtonElement;
+		// Single action row: just measure now (screenshot moved to the
+		// share control's popout).
+		const actions = DomUtil.create('div', 'popout-control__actions', body) as HTMLDivElement;
+		const measureBtn = DomUtil.create('button', 'popout-control__action', actions) as HTMLButtonElement;
 		measureBtn.type = 'button';
 		measureBtn.title = 'Measure distance';
 		measureBtn.setAttribute('aria-label', 'Measure distance');
 		measureBtn.setAttribute('aria-pressed', 'false');
 		measureBtn.innerHTML = `
-			<svg class="svg-icon" aria-hidden="true"><use xlink:href="#icon--link" /></svg>
+			<svg class="svg-icon" aria-hidden="true"><use xlink:href="#icon--marker_line" /></svg>
 			<span>Measure</span>`;
 		measureBtn.addEventListener('click', e => {
 			e.preventDefault();
@@ -94,47 +93,31 @@ export class ToolsControl extends Control {
 		});
 		this.measureBtn = measureBtn;
 
-		const screenshotBtn = DomUtil.create('button', 'tools-control__action', actions) as HTMLButtonElement;
-		screenshotBtn.type = 'button';
-		screenshotBtn.title = 'Save map view as image';
-		screenshotBtn.setAttribute('aria-label', 'Save map view as image');
-		screenshotBtn.innerHTML = `
-			<svg class="svg-icon" aria-hidden="true"><use xlink:href="#icon--link" /></svg>
-			<span>Save image</span>`;
-		screenshotBtn.addEventListener('click', e => {
-			e.preventDefault();
-			this.options.onScreenshot();
-		});
-
-		// Measure status line (hidden until measuring starts)
 		const measureStatus = DomUtil.create('div',
-			'tools-control__measure-status', body) as HTMLDivElement;
+			'popout-control__status', body) as HTMLDivElement;
 		measureStatus.hidden = true;
 		this.measureStatus = measureStatus;
 
-		// Always-visible toggle button (placed AFTER body in source so
-		// column-reverse pins it to the bottom of the column)
 		const toggleBtn = DomUtil.create('button',
-			'leaflet-control-button tools-control__toggle', container) as HTMLButtonElement;
+			'leaflet-control-button popout-control__toggle', container) as HTMLButtonElement;
 		toggleBtn.type = 'button';
 		toggleBtn.title = 'Tools';
 		toggleBtn.setAttribute('aria-label', 'Tools');
 		toggleBtn.setAttribute('aria-expanded', 'false');
-		toggleBtn.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use xlink:href="#icon--link" /></svg>`;
+		toggleBtn.innerHTML = `<svg class="svg-icon" aria-hidden="true"><use xlink:href="#icon--tools" /></svg>`;
 		toggleBtn.addEventListener('click', e => {
 			e.preventDefault();
 			this.options.onToggleExpanded();
 		});
 		this.toggleBtn = toggleBtn;
 
-		// Start collapsed.
 		this.setExpanded(false);
 		return container;
 	}
 
 	setExpanded(expanded: boolean): void {
 		if(!this.container || !this.body || !this.toggleBtn) return;
-		this.container.classList.toggle('tools-control--expanded', expanded);
+		this.container.classList.toggle('popout-control--expanded', expanded);
 		this.toggleBtn.setAttribute('aria-expanded', String(expanded));
 		this.body.setAttribute('aria-hidden', String(!expanded));
 	}
@@ -142,15 +125,15 @@ export class ToolsControl extends Control {
 	setMeasureActive(active: boolean): void {
 		if(!this.measureBtn || !this.measureStatus) return;
 		this.measureBtn.setAttribute('aria-pressed', String(active));
-		this.measureBtn.classList.toggle('tools-control__action--active', active);
+		this.measureBtn.classList.toggle('popout-control__action--active', active);
 		this.measureStatus.hidden = !active;
 	}
 
 	setMeasureStatus(text: string, hint: string): void {
 		if(!this.measureStatus) return;
 		this.measureStatus.innerHTML = `
-			<span class="tools-control__measure-total">${text}</span>
-			<span class="tools-control__measure-hint">${hint}</span>`;
+			<span class="popout-control__status-total">${text}</span>
+			<span class="popout-control__status-hint">${hint}</span>`;
 	}
 
 	focusGotoInput(): void {

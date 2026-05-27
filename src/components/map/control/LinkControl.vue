@@ -6,18 +6,17 @@
   - You may obtain a copy of the License at
   -
   - http://www.apache.org/licenses/LICENSE-2.0
-  -
-  - Unless required by applicable law or agreed to in writing, software
-  - distributed under the License is distributed on an "AS IS" BASIS,
-  - WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  - See the License for the specific language governing permissions and
-  - limitations under the License.
   -->
 
 <script lang="ts">
-import {defineComponent, onMounted, onUnmounted} from "vue";
+import {defineComponent, onMounted, onUnmounted, ref, watch} from "vue";
+import {toClipboard} from "@soerenmartius/vue3-clipboard";
+import {notify} from "@kyvg/vue3-notification";
 import {LinkControl} from "@/leaflet/control/LinkControl";
 import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
+import {useStore} from "@/store";
+import {clipboardError, clipboardSuccess} from "@/util";
+import {captureMapScreenshot, downloadBlob} from "@/util/screenshot";
 
 export default defineComponent({
 	props: {
@@ -28,9 +27,52 @@ export default defineComponent({
 	},
 
 	setup(props) {
+		const store = useStore();
+		const expanded = ref(false);
+
+		const embedBaseUrl = new URLSearchParams(window.location.search).get('embedBaseUrl');
+		const onCopySuccess = clipboardSuccess(store);
+		const onCopyError = clipboardError(store);
+
+		const onCopyLink = () => {
+			const base = embedBaseUrl || window.location.href.split("#")[0];
+			toClipboard(base + store.getters.url)
+				.then(onCopySuccess)
+				.catch(onCopyError);
+			expanded.value = false;
+		};
+
+		const onSaveImage = async () => {
+			expanded.value = false;
+			try {
+				const result = await captureMapScreenshot(props.leaflet.getContainer());
+				const world = store.state.currentWorld?.name || 'world';
+				const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+				downloadBlob(result.blob, `liveatlas-${world}-${stamp}.png`);
+				if(result.corsTainted) {
+					notify({
+						type: 'warn',
+						title: 'Partial screenshot',
+						text: 'Some tiles or icons could not be captured (cross-origin).',
+					});
+				}
+			} catch (err) {
+				notify({
+					type: 'error',
+					title: 'Screenshot failed',
+					text: (err instanceof Error ? err.message : String(err)),
+				});
+			}
+		};
+
 		const control = new LinkControl({
 			position: 'bottomleft',
+			onToggleExpanded: () => expanded.value = !expanded.value,
+			onCopyLink,
+			onSaveImage,
 		});
+
+		watch(expanded, v => control.setExpanded(v));
 
 		onMounted(() => props.leaflet.addControl(control));
 		onUnmounted(() => props.leaflet.removeControl(control));

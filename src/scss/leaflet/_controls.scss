@@ -121,22 +121,54 @@
 	}
 }
 
-// Bottomleft collapsible tools panel (goto-coords + measure + screenshot).
-// The body grows UPWARD from the toggle button using column-reverse on
-// the flex container, so the toggle stays anchored at the bottom corner.
-.tools-control {
+// Shared base for collapsible bottomleft popout controls (Tools + Share).
+//
+// The wrapper itself is invisible — its only job is to hold the toggle
+// button at the bottom (in column-reverse flow) and the popout body
+// above it. The toggle is sized and styled identically to a plain
+// .leaflet-control-button so it blends with the rest of the bottomleft
+// column; the body has its own panel chrome.
+.popout-control {
 	display: flex;
 	flex-direction: column-reverse;
-	align-items: stretch;
+	align-items: flex-start;
 	gap: var(--ui-element-spacing);
+
+	// Cancel the .leaflet-control base styling on the wrapper — the
+	// chrome belongs on the toggle and the body, not on the empty
+	// space between them.
 	background: none !important;
 	border: none !important;
 	box-shadow: none !important;
 	backdrop-filter: none !important;
 	pointer-events: none;
 
-	> .tools-control__toggle,
-	> .tools-control__body {
+	> .popout-control__toggle {
+		// .leaflet-control-button already sets width/height +
+		// %button-style padding/icon centering; just make sure the
+		// chrome matches the standalone Leaflet button look exactly.
+		pointer-events: auto;
+		background-color: var(--background-base);
+		color: var(--text-base);
+		border: 1px solid var(--border-color);
+		border-radius: var(--border-radius);
+		box-shadow: var(--box-shadow);
+		backdrop-filter: blur(24px) saturate(1.2);
+		-webkit-backdrop-filter: blur(24px) saturate(1.2);
+		transition: background-color 0.15s ease, box-shadow 0.15s ease;
+
+		&:hover {
+			background-color: var(--background-hover);
+			color: var(--text-hover);
+		}
+	}
+
+	.popout-control__body {
+		display: none;
+		flex-direction: column;
+		gap: 0.6rem;
+		padding: 0.8rem;
+		width: 22rem;
 		pointer-events: auto;
 		background-color: var(--background-base);
 		border: 1px solid var(--border-color);
@@ -146,24 +178,78 @@
 		-webkit-backdrop-filter: blur(24px) saturate(1.2);
 	}
 
-	> .tools-control__toggle {
-		width: var(--ui-button-size);
-		height: var(--ui-button-size);
-		flex: 0 0 auto;
-	}
-
-	.tools-control__body {
-		display: none;
-		flex-direction: column;
-		gap: 0.6rem;
-		padding: 0.8rem;
-		width: 22rem;
-	}
-
-	&.tools-control--expanded .tools-control__body {
+	&.popout-control--expanded .popout-control__body {
 		display: flex;
 	}
 
+	.popout-control__actions {
+		display: flex;
+		gap: 0.6rem;
+	}
+
+	.popout-control__action {
+		flex: 1 1 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.6rem 0.8rem;
+		background-color: var(--background-light);
+		color: var(--text-base);
+		border: 1px solid transparent;
+		border-radius: 0.4rem;
+		font-size: 1.3rem;
+		cursor: pointer;
+
+		.svg-icon {
+			width: 1.6rem;
+			height: 1.6rem;
+			position: static;
+			margin: 0;
+			flex: 0 0 auto;
+		}
+
+		&:hover {
+			background-color: var(--background-hover);
+			color: var(--text-hover);
+		}
+
+		&.popout-control__action--active {
+			background-color: var(--background-selected);
+			color: var(--text-selected);
+			border-color: var(--border-color);
+		}
+	}
+
+	.popout-control__status {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+		padding: 0.4rem 0.2rem 0;
+		font-family: 'JetBrains Mono', 'Fira Code', monospace;
+		border-top: 1px solid var(--border-color);
+	}
+
+	.popout-control__status-total {
+		font-size: 1.5rem;
+		font-weight: 600;
+		color: var(--text-emphasis);
+	}
+
+	.popout-control__status-hint {
+		font-size: 1.2rem;
+		color: var(--text-subtle);
+	}
+
+	@media (max-width: 400px) {
+		.popout-control__body {
+			width: min(18rem, calc(100vw - var(--ui-button-size) * 2));
+		}
+	}
+}
+
+// Tools-specific subclass styling: the go-to-coords form.
+.tools-control {
 	.tools-control__goto {
 		display: flex;
 		align-items: stretch;
@@ -189,77 +275,28 @@
 	.tools-control__goto-button {
 		flex: 0 0 auto;
 		width: 3.2rem;
+		border: none;
 		border-left: 1px solid var(--border-color);
 		background-color: transparent;
-	}
-
-	.tools-control__goto--invalid {
-		animation: tools-control-shake 0.35s ease;
-		.tools-control__goto-input { color: #e74c3c; }
-	}
-
-	.tools-control__actions {
-		display: flex;
-		gap: 0.6rem;
-	}
-
-	.tools-control__action {
-		flex: 1 1 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.5rem;
-		padding: 0.6rem 0.8rem;
-		background-color: var(--background-light);
 		color: var(--text-base);
-		border: 1px solid transparent;
-		border-radius: 0.4rem;
-		font-size: 1.3rem;
 		cursor: pointer;
-
-		.svg-icon {
-			width: 1.6rem;
-			height: 1.6rem;
-			position: static;
-			margin: 0;
-		}
 
 		&:hover {
 			background-color: var(--background-hover);
 			color: var(--text-hover);
 		}
 
-		&.tools-control__action--active {
-			background-color: var(--background-selected);
-			color: var(--text-selected);
-			border-color: var(--border-color);
+		.svg-icon {
+			width: 1.4rem;
+			height: 1.4rem;
+			position: static;
+			margin: 0;
 		}
 	}
 
-	.tools-control__measure-status {
-		display: flex;
-		flex-direction: column;
-		gap: 0.1rem;
-		padding: 0.4rem 0.2rem 0;
-		font-family: 'JetBrains Mono', 'Fira Code', monospace;
-		border-top: 1px solid var(--border-color);
-	}
-
-	.tools-control__measure-total {
-		font-size: 1.5rem;
-		font-weight: 600;
-		color: var(--text-emphasis);
-	}
-
-	.tools-control__measure-hint {
-		font-size: 1.2rem;
-		color: var(--text-subtle);
-	}
-
-	@media (max-width: 400px) {
-		.tools-control__body {
-			width: min(18rem, calc(100vw - var(--ui-button-size) * 2));
-		}
+	.tools-control__goto--invalid {
+		animation: popout-control-shake 0.35s ease;
+		.tools-control__goto-input { color: #e74c3c; }
 	}
 }
 
@@ -267,7 +304,7 @@
 	cursor: crosshair;
 }
 
-@keyframes tools-control-shake {
+@keyframes popout-control-shake {
 	0%, 100% { transform: translateX(0); }
 	25%      { transform: translateX(-4px); }
 	75%      { transform: translateX(4px); }

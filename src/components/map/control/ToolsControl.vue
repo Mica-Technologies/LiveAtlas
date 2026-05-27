@@ -11,16 +11,12 @@
 <script lang="ts">
 import {defineComponent, onMounted, onUnmounted, ref, watch} from "vue";
 import {LatLng, LeafletMouseEvent, Polyline, CircleMarker} from "leaflet";
-import {notify} from "@kyvg/vue3-notification";
 import {ToolsControl} from "@/leaflet/control/ToolsControl";
 import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
 import {useStore} from "@/store";
 import {MutationTypes} from "@/store/mutation-types";
 import {LiveAtlasLocation} from "@/index";
-import {captureMapScreenshot, downloadBlob} from "@/util/screenshot";
 
-// Same parsing as the old standalone goto control: accept the common
-// chat-paste formats (whitespace / commas / brackets), 2 numbers → Y=64.
 const parseCoords = (raw: string): LiveAtlasLocation | null => {
 	const matches = raw.match(/-?\d+(?:\.\d+)?/g);
 	if(!matches) return null;
@@ -42,9 +38,6 @@ export default defineComponent({
 		const store = useStore();
 		const expanded = ref(false);
 
-		// Measurement state. Kept local to this component so it doesn't
-		// leak into the global store — only the polyline and click
-		// handlers need to know.
 		const measureActive = ref(false);
 		const measurePoints: LatLng[] = [];
 		let measurePolyline: Polyline | null = null;
@@ -130,28 +123,6 @@ export default defineComponent({
 			measurePoints.length = 0;
 		};
 
-		const onScreenshot = async () => {
-			try {
-				const result = await captureMapScreenshot(props.leaflet.getContainer());
-				const world = store.state.currentWorld?.name || 'world';
-				const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-				downloadBlob(result.blob, `liveatlas-${world}-${stamp}.png`);
-				if(result.corsTainted) {
-					notify({
-						type: 'warn',
-						title: 'Partial screenshot',
-						text: 'Some tiles or icons could not be captured (cross-origin).',
-					});
-				}
-			} catch (err) {
-				notify({
-					type: 'error',
-					title: 'Screenshot failed',
-					text: (err instanceof Error ? err.message : String(err)),
-				});
-			}
-		};
-
 		const control = new ToolsControl({
 			position: 'bottomleft',
 			onToggleExpanded: () => expanded.value = !expanded.value,
@@ -165,13 +136,26 @@ export default defineComponent({
 				control.clearGotoInput();
 			},
 			onMeasureToggle: () => measureActive.value ? stopMeasure() : startMeasure(),
-			onScreenshot,
 		});
 
 		watch(expanded, v => control.setExpanded(v));
 		watch(measureActive, v => control.setMeasureActive(v));
 
-		onMounted(() => props.leaflet.addControl(control));
+		onMounted(() => {
+			props.leaflet.addControl(control);
+
+			// Leaflet prepends new controls in `bottom*` corners, so a freshly
+			// added control sits ABOVE everything previously there. We want
+			// this toggle directly below the zoom buttons, so move our DOM
+			// node to be after zoom's container (which yields the visual
+			// bottom of the bottomleft column).
+			const myEl = control.getContainer();
+			const zoomEl = (props.leaflet as unknown as {zoomControl?: {getContainer: () => HTMLElement}})
+				.zoomControl?.getContainer();
+			if(myEl && zoomEl && zoomEl.parentNode === myEl.parentNode) {
+				zoomEl.parentNode.insertBefore(myEl, zoomEl.nextSibling);
+			}
+		});
 		onUnmounted(() => {
 			if(measureActive.value) stopMeasure();
 			props.leaflet.removeControl(control);

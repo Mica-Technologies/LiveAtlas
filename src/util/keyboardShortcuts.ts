@@ -67,8 +67,8 @@ export const registerKeyboardShortcuts = (store: Store<State>): void => {
 				// The tools panel collapses by default — expand it first
 				// so the input is mounted, then focus on the next frame.
 				const panel = document.querySelector('.tools-control');
-				if(panel && !panel.classList.contains('tools-control--expanded')) {
-					(panel.querySelector('.tools-control__toggle') as HTMLElement | null)?.click();
+				if(panel && !panel.classList.contains('popout-control--expanded')) {
+					(panel.querySelector('.popout-control__toggle') as HTMLElement | null)?.click();
 				}
 				window.requestAnimationFrame(() => {
 					focusElement('.tools-control__goto-input');
