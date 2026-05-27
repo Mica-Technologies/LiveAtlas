@@ -343,9 +343,40 @@
 		}
 	}
 
+	// Scale down proportionally to match the ~80% / ~72% drop the buttons
+	// take at the 600 / 400 mobile breakpoints. The 480px rule below
+	// pre-existed; the surrounding rules tighten padding and the label
+	// type so the whole control shrinks together instead of just the
+	// monospace number.
+	@media (max-width: 600px) {
+		padding: 0.4rem 1rem;
+
+		.value {
+			font-size: 1.5rem;
+
+			&[data-label]:before {
+				font-size: 1rem;
+				margin-bottom: 0.3rem;
+			}
+		}
+	}
+
 	@media (max-width: 480px), (max-height: 480px) {
 		.value {
-			font-size: 1.4rem;
+			font-size: 1.3rem;
+		}
+	}
+
+	@media (max-width: 400px) {
+		padding: 0.3rem 0.8rem;
+
+		.value {
+			font-size: 1.2rem;
+
+			&[data-label]:before {
+				font-size: 0.9rem;
+				margin-bottom: 0.2rem;
+			}
 		}
 	}
 
@@ -605,7 +636,13 @@
 
 				.value + .value {
 					margin-left: 0;
-					margin-top: 0.6rem;
+					margin-top: 0.5rem;
+				}
+			}
+
+			@media (max-width: 400px) {
+				.value + .value {
+					margin-top: 0.3rem;
 				}
 			}
 		}
