@@ -35,7 +35,7 @@ import {
 	LiveAtlasMarker,
 	LiveAtlasMapViewTarget,
 	LiveAtlasGlobalMessageConfig,
-	LiveAtlasUIConfig, LiveAtlasServerDefinition
+	LiveAtlasUIConfig, LiveAtlasServerDefinition, LiveAtlasBookmark
 } from "@/index";
 import {
 	DynmapMarkerSetUpdate, DynmapMarkerUpdate,
@@ -96,6 +96,10 @@ export type Mutations<S = State> = {
 	[MutationTypes.PING_MARKER](state: S, payload: {setId: string; markerId: string}): void
 	[MutationTypes.CLEAR_FOLLOW_TARGET](state: S, a?: void): void
 	[MutationTypes.CLEAR_VIEW_TARGET](state: S, a?: void): void
+
+	[MutationTypes.ADD_BOOKMARK](state: S, payload: LiveAtlasBookmark): void
+	[MutationTypes.REMOVE_BOOKMARK](state: S, id: string): void
+	[MutationTypes.RENAME_BOOKMARK](state: S, payload: {id: string; name: string}): void
 
 	[MutationTypes.SET_SCREEN_SIZE](state: S, payload: {width: number, height: number}): void
 	[MutationTypes.TOGGLE_UI_ELEMENT_VISIBILITY](state: S, payload: LiveAtlasUIElement): void
@@ -536,6 +540,19 @@ export const mutations: MutationTree<State> & Mutations = {
 	// same marker still fires the watcher in MapMarkers.
 	[MutationTypes.PING_MARKER](state: State, target: {setId: string; markerId: string}) {
 		state.pingTarget = {...target, nonce: Date.now()};
+	},
+
+	[MutationTypes.ADD_BOOKMARK](state: State, bookmark: LiveAtlasBookmark) {
+		state.bookmarks.push(bookmark);
+	},
+
+	[MutationTypes.REMOVE_BOOKMARK](state: State, id: string) {
+		state.bookmarks = state.bookmarks.filter(b => b.id !== id);
+	},
+
+	[MutationTypes.RENAME_BOOKMARK](state: State, {id, name}: {id: string; name: string}) {
+		const b = state.bookmarks.find(b => b.id === id);
+		if(b) b.name = name;
 	},
 
 	//Clear the follow target

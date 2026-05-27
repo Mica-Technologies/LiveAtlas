@@ -56,6 +56,12 @@ store.subscribe((mutation, state) => {
 			sidebar: state.ui.sidebar,
 		}));
 	}
+
+	if(mutation.type === MutationTypes.ADD_BOOKMARK
+		|| mutation.type === MutationTypes.REMOVE_BOOKMARK
+		|| mutation.type === MutationTypes.RENAME_BOOKMARK) {
+		localStorage.setItem('liveatlas.bookmarks', JSON.stringify(state.bookmarks));
+	}
 });
 
 registerMapProvider('dynmap', DynmapMapProvider);

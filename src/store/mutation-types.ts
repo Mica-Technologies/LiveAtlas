@@ -51,6 +51,10 @@ export enum MutationTypes {
 	CLEAR_FOLLOW_TARGET = 'clearFollow',
 	CLEAR_VIEW_TARGET = 'clearViewTarget',
 
+	ADD_BOOKMARK = 'addBookmark',
+	REMOVE_BOOKMARK = 'removeBookmark',
+	RENAME_BOOKMARK = 'renameBookmark',
+
 	SET_SCREEN_SIZE = 'setScreenSize',
 	TOGGLE_UI_ELEMENT_VISIBILITY = 'toggleUIElementVisibility',
 	SET_UI_ELEMENT_VISIBILITY = 'setUIElementVisibility',

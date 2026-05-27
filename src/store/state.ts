@@ -32,7 +32,7 @@ import {
 	LiveAtlasChat,
 	LiveAtlasUIModal,
 	LiveAtlasSidebarSectionState,
-	LiveAtlasMarker, LiveAtlasMapViewTarget
+	LiveAtlasMarker, LiveAtlasMapViewTarget, LiveAtlasBookmark
 } from "@/index";
 import {
 	DynmapMarkerUpdate,
@@ -42,6 +42,24 @@ import LiveAtlasMapDefinition from "@/model/LiveAtlasMapDefinition";
 import {getMessages} from "@/util";
 import {getDefaultPlayerImage} from "@/util/images";
 import {LocalEditorMarker, LocalEditorSet} from "@/util/localEditor";
+
+const BOOKMARKS_STORAGE_KEY = 'liveatlas.bookmarks';
+
+// Bookmarks live in localStorage so they survive page reloads. Read once
+// at module load; the persistence subscription in main.ts writes back on
+// every mutation.
+const loadStoredBookmarks = (): LiveAtlasBookmark[] => {
+	try {
+		const raw = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
+		if(!raw) return [];
+		const parsed = JSON.parse(raw);
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		return [];
+	}
+};
+
+export {BOOKMARKS_STORAGE_KEY};
 
 export type LocalEditorDrawingKind = 'area' | 'line' | 'circle-radius';
 export type LocalEditorPickTarget = 'line' | 'fill';
@@ -117,6 +135,7 @@ export type State = {
 	followTarget?: LiveAtlasPlayer;
 	viewTarget?: LiveAtlasMapViewTarget;
 	pingTarget?: { setId: string; markerId: string; nonce: number };
+	bookmarks: LiveAtlasBookmark[];
 
 	currentMapProvider?: Readonly<LiveAtlasMapProvider>;
 	currentServer?: LiveAtlasServerDefinition;
@@ -258,6 +277,7 @@ export const state: State = {
 	followTarget: undefined,
 	viewTarget: undefined,
 	pingTarget: undefined,
+	bookmarks: loadStoredBookmarks(),
 
 	currentMapProvider: undefined,
 	currentServer: undefined,

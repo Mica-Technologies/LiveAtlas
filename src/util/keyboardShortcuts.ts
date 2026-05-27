@@ -69,6 +69,12 @@ export const registerKeyboardShortcuts = (store: Store<State>): void => {
 				}
 				break;
 			}
+			case 'b':
+			case 'B': {
+				store.commit(MutationTypes.SHOW_UI_MODAL, 'bookmarks');
+				e.preventDefault();
+				break;
+			}
 			case '?': {
 				store.commit(MutationTypes.SHOW_UI_MODAL, 'shortcuts');
 				e.preventDefault();

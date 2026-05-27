@@ -38,6 +38,12 @@
 			<v-list-item @click.prevent="pan">
 				<v-list-item-title>{{ messageCenterHere }}</v-list-item-title>
 			</v-list-item>
+			<v-list-item @click.prevent="saveBookmark">
+				<v-list-item-title>Save view as bookmark…</v-list-item-title>
+			</v-list-item>
+			<v-list-item @click.prevent="openBookmarks">
+				<v-list-item-title>Bookmarks…</v-list-item-title>
+			</v-list-item>
 			<template v-if="editorActive">
 				<!-- Existing marker right-clicked: edit / queue deletion live
 				     at the top of the editor section. Note: still show the
@@ -246,6 +252,32 @@ export default defineComponent({
 			}
 		}
 
+		const saveBookmark = () => {
+			if(!currentMap.value || !store.state.currentServer) return;
+			const name = window.prompt('Name for this bookmark:');
+			if(!name || !name.trim()) {
+				closeContextMenu();
+				return;
+			}
+			const world = currentMap.value.appendedWorld || currentMap.value.world;
+			store.commit(MutationTypes.ADD_BOOKMARK, {
+				id: `bm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+				name: name.trim(),
+				serverId: store.state.currentServer.id,
+				worldName: world.name,
+				mapName: currentMap.value.name,
+				location: {...location.value},
+				zoom: currentZoom.value,
+				createdAt: Date.now(),
+			});
+			closeContextMenu();
+		};
+
+		const openBookmarks = () => {
+			store.commit(MutationTypes.SHOW_UI_MODAL, 'bookmarks');
+			closeContextMenu();
+		};
+
 		const editorActive = computed(() => store.state.localEditor.active);
 
 		// Whether the right-clicked existing marker is already mirrored as
@@ -412,6 +444,8 @@ export default defineComponent({
 			style,
 
 			pan,
+			saveBookmark,
+			openBookmarks,
 			handleKeydown,
 
 			editorActive,

@@ -85,6 +85,17 @@ interface LiveAtlasMapViewTarget {
 	options?: FitBoundsOptions;
 }
 
+export interface LiveAtlasBookmark {
+	id: string;
+	name: string;
+	serverId: string;
+	worldName: string;
+	mapName: string;
+	location: LiveAtlasLocation;
+	zoom: number;
+	createdAt: number;
+}
+
 interface LiveAtlasGlobalConfig {
 	servers: Map<string, LiveAtlasServerDefinition>;
 	messages: LiveAtlasGlobalMessageConfig;
@@ -123,7 +134,7 @@ interface LiveAtlasUIConfig {
 }
 
 export type LiveAtlasUIElement = 'layers' | 'chat' | LiveAtlasSidebarSection;
-export type LiveAtlasUIModal = 'login' | 'settings' | 'shortcuts';
+export type LiveAtlasUIModal = 'login' | 'settings' | 'shortcuts' | 'bookmarks';
 export type LiveAtlasSidebarSection = 'servers' | 'players' | 'maps' | 'markers';
 export type LiveAtlasDimension = 'overworld' | 'nether' | 'end';
 

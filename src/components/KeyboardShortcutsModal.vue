@@ -38,6 +38,7 @@ import SvgIcon from "@/components/SvgIcon.vue";
 const shortcuts = [
 	{key: '/', label: 'Search markers'},
 	{key: 'G', label: 'Jump to coordinates'},
+	{key: 'B', label: 'Open bookmarks'},
 	{key: '?', label: 'Show this help'},
 	{key: 'Esc', label: 'Close the current dialog'},
 	{key: 'Arrows', label: 'Pan the map (when map has focus)'},
