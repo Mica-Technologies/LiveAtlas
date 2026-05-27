@@ -52,10 +52,14 @@
 			<button v-for="marker in markers" :key="marker.id" type="button"
 				class="local-editor__list-item"
 				:class="{ 'local-editor__list-item--selected': marker.id === selectedId,
-					'local-editor__list-item--other-world': marker.worldName !== currentWorldName }"
+					'local-editor__list-item--other-world': marker.worldName !== currentWorldName,
+					'local-editor__list-item--edit': marker.origin === 'edit',
+					'local-editor__list-item--delete': marker.origin === 'delete' }"
 				@click="select(marker.id)">
 				<span class="local-editor__list-label">
 					<span class="local-editor__type-badge" :data-type="marker.type">{{ marker.type }}</span>
+					<span v-if="marker.origin === 'edit'" class="local-editor__origin-badge local-editor__origin-badge--edit">Edit</span>
+					<span v-else-if="marker.origin === 'delete'" class="local-editor__origin-badge local-editor__origin-badge--delete">Delete</span>
 					{{ marker.label || marker.id }}
 				</span>
 				<span class="local-editor__list-meta">{{ markerSummary(marker) }}</span>
@@ -69,12 +73,21 @@
 			<v-text-field label="ID" density="compact" variant="outlined"
 				:model-value="editingId" @update:model-value="onIdInput"
 				@blur="commitId" @keydown.enter.prevent="commitId"
+				:disabled="idLocked"
 				:error-messages="editingIdError" :error="!!editingIdError"
 				:hide-details="!editingIdError">
-				<template v-if="idIsAuto" #append-inner>
+				<template v-if="idLocked" #append-inner>
+					<span class="local-editor__auto-badge" :title="idLockedReason">Locked</span>
+				</template>
+				<template v-else-if="idIsAuto" #append-inner>
 					<span class="local-editor__auto-badge" title="Auto-derived from label until you customize it">Auto</span>
 				</template>
 			</v-text-field>
+
+			<v-alert v-if="selected.origin === 'delete'" type="warning" variant="tonal" density="compact"
+				class="local-editor__delete-banner">
+				Queued for deletion. The server marker stays untouched until you run the commands.
+			</v-alert>
 
 			<v-combobox label="Marker set" density="compact" variant="outlined" hide-details
 				:items="setOptions" :model-value="selected.setId"
@@ -183,7 +196,18 @@
 
 			<div class="local-editor__form-actions">
 				<v-btn variant="text" size="small" @click="panToSelected">Pan to marker</v-btn>
-				<v-btn variant="text" size="small" color="error" @click="deleteSelected">Delete</v-btn>
+				<!-- Edit-origin: offer queue-deletion + discard (which restores the server marker). -->
+				<template v-if="selected.origin === 'edit'">
+					<v-btn variant="text" size="small" color="warning" @click="toggleDelete">Queue deletion</v-btn>
+					<v-btn variant="text" size="small" @click="discardEdit">Discard edit</v-btn>
+				</template>
+				<!-- Delete-origin: offer restore-to-edit + discard. The shape can't be field-edited. -->
+				<template v-else-if="selected.origin === 'delete'">
+					<v-btn variant="text" size="small" @click="toggleDelete">Edit instead</v-btn>
+					<v-btn variant="text" size="small" @click="discardEdit">Discard</v-btn>
+				</template>
+				<!-- Locally-created marker: regular Delete button (drops from pending list). -->
+				<v-btn v-else variant="text" size="small" color="error" @click="deleteSelected">Delete</v-btn>
 			</div>
 		</section>
 
@@ -321,9 +345,12 @@ export default defineComponent({
 		const updateField = (key: string, value: unknown) => {
 			// Special handling for label: when the current id is still auto,
 			// derive a new id from the new label and rename in lockstep.
+			// Skip the rename half for edits/deletes — those IDs are pinned
+			// to the original server marker.
 			if(key === 'label' && selected.value) {
 				const m = selected.value;
-				const wasAuto = isMarkerIdAuto(m);
+				const idIsPinned = m.origin === 'edit' || m.origin === 'delete';
+				const wasAuto = !idIsPinned && isMarkerIdAuto(m);
 				commitPatch({label: value} as Partial<LocalEditorMarker>);
 				if(!wasAuto) return;
 				const slug = slugifyId(String(value ?? ''));
@@ -351,6 +378,29 @@ export default defineComponent({
 			const m = selected.value;
 			return !!m && isMarkerIdAuto(m);
 		});
+
+		// Edits keep the original server ID (so /dmarker update can target
+		// it); deletes don't need an editable ID either.
+		const idLocked = computed(() => {
+			const m = selected.value;
+			return !!m && (m.origin === 'edit' || m.origin === 'delete');
+		});
+
+		const idLockedReason = computed(() => {
+			const m = selected.value;
+			if(m?.origin === 'delete') return 'ID is locked while queued for deletion';
+			return 'ID matches the existing server marker';
+		});
+
+		const toggleDelete = () => {
+			if(!selectedId.value) return;
+			store.commit(MutationTypes.LOCAL_EDITOR_TOGGLE_DELETE, selectedId.value);
+		};
+
+		const discardEdit = () => {
+			if(!selectedId.value) return;
+			store.commit(MutationTypes.LOCAL_EDITOR_DISCARD_EDIT, selectedId.value);
+		};
 
 		const commitId = () => {
 			const m = selected.value;
@@ -481,8 +531,12 @@ export default defineComponent({
 			editingId,
 			editingIdError,
 			idIsAuto,
+			idLocked,
+			idLockedReason,
 			onIdInput,
 			commitId,
+			toggleDelete,
+			discardEdit,
 
 			close,
 			select,
@@ -635,6 +689,41 @@ export default defineComponent({
 			&--other-world {
 				opacity: 0.6;
 			}
+
+			&--edit {
+				border-left: 3px solid #78b4ff;
+			}
+
+			&--delete {
+				border-left: 3px solid #dc6464;
+				text-decoration: line-through;
+				text-decoration-color: rgba(220, 100, 100, 0.5);
+			}
+		}
+
+		&__origin-badge {
+			display: inline-block;
+			padding: 0.1rem 0.5rem;
+			font-size: 1rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			border-radius: 0.25rem;
+
+			&--edit {
+				background-color: rgba(120, 180, 255, 0.2);
+				color: #78b4ff;
+			}
+
+			&--delete {
+				background-color: rgba(220, 100, 100, 0.2);
+				color: #dc6464;
+				text-decoration: none;
+			}
+		}
+
+		&__delete-banner {
+			font-size: 1.25rem;
 		}
 
 		&__list-label {

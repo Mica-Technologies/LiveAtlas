@@ -14,9 +14,15 @@
  * limitations under the License.
  */
 
-import {Coordinate} from "@/index";
+import {Coordinate, LiveAtlasAreaMarker, LiveAtlasCircleMarker, LiveAtlasLineMarker, LiveAtlasMarker, LiveAtlasPointMarker} from "@/index";
+import {LiveAtlasMarkerType} from "@/util/markers";
 
 export type LocalEditorMarkerType = 'point' | 'area' | 'line' | 'circle';
+
+// 'new'    — Created locally in the editor (default, emitted as /dmarker add*)
+// 'edit'   — Clone of a server marker; emitted as /dmarker update*
+// 'delete' — Tombstone for a server marker; emitted as /dmarker delete*
+export type LocalEditorMarkerOrigin = 'new' | 'edit' | 'delete';
 
 export interface LocalEditorSet {
 	id: string;
@@ -32,6 +38,11 @@ interface LocalEditorMarkerBase {
 	setId: string;
 	label: string;
 	description?: string;
+	origin?: LocalEditorMarkerOrigin;
+	// The set the marker lived in on the server. Only meaningful for
+	// origin === 'edit' or 'delete'. Used so /dmarker update|delete can
+	// target the right marker even if the user changes setId locally.
+	originalSetId?: string;
 }
 
 export interface LocalEditorPointMarker extends LocalEditorMarkerBase {
@@ -232,18 +243,31 @@ export interface CommandGenerationOptions {
 	localSets: LocalEditorSet[];
 }
 
+// For edits, /dmarker update needs to target the marker's ORIGINAL set (the
+// one it lives in on the server). If the user has moved it to a different set
+// locally, we additionally emit newset: to migrate it. For new markers and
+// for the lookup-set in adds, originalSetId is the same as setId.
+const lookupSet = (m: LocalEditorMarker): string => m.originalSetId || m.setId;
+
+const newsetIfMoved = (m: LocalEditorMarker): string | null =>
+	m.originalSetId && m.originalSetId !== m.setId ? `newset:${m.setId}` : null;
+
 const emitPoint = (m: LocalEditorPointMarker): string => {
-	return [
-		'/dmarker add',
+	const isUpdate = m.origin === 'edit';
+	const parts = [
+		isUpdate ? '/dmarker update' : '/dmarker add',
 		`id:${m.id}`,
 		quoteArg(m.label || m.id),
 		`icon:${m.iconId}`,
-		`set:${m.setId}`,
+		`set:${lookupSet(m)}`,
 		`x:${round(m.location.x)}`,
 		`y:${round(m.location.y)}`,
 		`z:${round(m.location.z)}`,
 		`world:${m.worldName}`,
-	].join(' ');
+	];
+	const newset = newsetIfMoved(m);
+	if (newset) parts.push(newset);
+	return parts.join(' ');
 };
 
 const emitCorners = (points: Coordinate[], world: string): string[] => {
@@ -255,15 +279,25 @@ const emitCorners = (points: Coordinate[], world: string): string[] => {
 };
 
 const emitAreaOrLine = (kind: 'area' | 'line', m: LocalEditorAreaMarker | LocalEditorLineMarker): string[] => {
+	const isUpdate = m.origin === 'edit';
 	const lines = emitCorners(m.points, m.worldName);
-	lines.push([
-		`/dmarker add${kind}`,
+	const verb = isUpdate ? `update${kind}` : `add${kind}`;
+	// For updates, label/newset go on the same command as the corner-apply,
+	// since /dmarker update<kind> reads from the corner staging buffer.
+	const headerParts = [
+		`/dmarker ${verb}`,
 		`id:${m.id}`,
 		quoteArg(m.label || m.id),
-		`set:${m.setId}`,
-	].join(' '));
+		`set:${lookupSet(m)}`,
+	];
+	const newset = newsetIfMoved(m);
+	if (newset) headerParts.push(newset);
+	lines.push(headerParts.join(' '));
 
 	const style = m.style;
+	// After the geometry/label pass above, restate the style. The setId here
+	// is the marker's CURRENT set (already migrated by the newset: above if
+	// applicable), so use m.setId directly.
 	const updateParts = [
 		`/dmarker update${kind}`,
 		`id:${m.id}`,
@@ -280,19 +314,24 @@ const emitAreaOrLine = (kind: 'area' | 'line', m: LocalEditorAreaMarker | LocalE
 };
 
 const emitCircle = (m: LocalEditorCircleMarker): string[] => {
+	const isUpdate = m.origin === 'edit';
+	const verb = isUpdate ? 'updatecircle' : 'addcircle';
 	const lines: string[] = [];
-	lines.push([
-		'/dmarker addcircle',
+	const headerParts = [
+		`/dmarker ${verb}`,
 		`id:${m.id}`,
 		quoteArg(m.label || m.id),
-		`set:${m.setId}`,
+		`set:${lookupSet(m)}`,
 		`x:${round(m.center.x)}`,
 		`y:${round(m.center.y)}`,
 		`z:${round(m.center.z)}`,
 		`world:${m.worldName}`,
 		`radiusx:${round(m.radiusX)}`,
 		`radiusz:${round(m.radiusZ)}`,
-	].join(' '));
+	];
+	const newset = newsetIfMoved(m);
+	if (newset) headerParts.push(newset);
+	lines.push(headerParts.join(' '));
 
 	const s = m.style;
 	lines.push([
@@ -308,6 +347,16 @@ const emitCircle = (m: LocalEditorCircleMarker): string[] => {
 	return lines;
 };
 
+const emitDelete = (m: LocalEditorMarker): string => {
+	const setForDelete = m.originalSetId || m.setId;
+	switch (m.type) {
+		case 'point':  return `/dmarker delete id:${m.id} set:${setForDelete}`;
+		case 'area':   return `/dmarker deletearea id:${m.id} set:${setForDelete}`;
+		case 'line':   return `/dmarker deleteline id:${m.id} set:${setForDelete}`;
+		case 'circle': return `/dmarker deletecircle id:${m.id} set:${setForDelete}`;
+	}
+};
+
 export const generateCommands = (
 	markers: LocalEditorMarker[],
 	options: CommandGenerationOptions,
@@ -316,7 +365,10 @@ export const generateCommands = (
 	const declaredSets = new Set<string>();
 	const localSetsById = new Map(options.localSets.map(s => [s.id, s]));
 
+	// Set declarations only matter for markers that will land in a set
+	// (adds and edits). Deletes target existing markers in existing sets.
 	for (const m of markers) {
+		if (m.origin === 'delete') continue;
 		if (options.existingSetIds.has(m.setId) || declaredSets.has(m.setId)) continue;
 
 		const localSet = localSetsById.get(m.setId);
@@ -340,6 +392,11 @@ export const generateCommands = (
 	}
 
 	for (const m of markers) {
+		if (m.origin === 'delete') {
+			lines.push(emitDelete(m));
+			// Deletes don't need a follow-up description command.
+			continue;
+		}
 		switch (m.type) {
 			case 'point':
 				lines.push(emitPoint(m));
@@ -355,6 +412,12 @@ export const generateCommands = (
 				break;
 		}
 
+		// For edits we always reset the description first so the user's edited
+		// description (including the empty case) becomes authoritative. For
+		// new markers a reset is unnecessary (no existing description).
+		if (m.origin === 'edit') {
+			lines.push(`/dmarker resetdesc id:${m.id} set:${m.setId}`);
+		}
 		if (m.description && m.description.trim()) {
 			lines.push(`/dmarker appenddesc id:${m.id} set:${m.setId} desc:${quoteAlways(m.description)}`);
 		}
@@ -490,6 +553,120 @@ export const parseIconIdFromUrl = (url: string): string | null => {
 export const extractIconUrlPrefix = (anyIconUrl: string): string | null => {
 	const match = anyIconUrl.match(/^(.+_markers_\/)[^/]+\.png(?:[?#].*)?$/);
 	return match ? match[1] : null;
+};
+
+// Reverse-map a LiveAtlas (server) marker into the editor's marker shape so
+// the user can edit it locally. The originalSetId is captured up-front so
+// later /dmarker update can target the right set even if setId is changed.
+export const liveAtlasToLocalEditor = (
+	setId: string,
+	worldName: string,
+	marker: LiveAtlasMarker,
+): LocalEditorMarker | null => {
+	const stripHtml = (s: string | undefined): string => {
+		if (!s) return '';
+		// Cheap-enough HTML strip for popup text. Server tooltips may include
+		// markup; the editor's label/description are plain text.
+		return s.replace(/<[^>]*>/g, '').trim();
+	};
+
+	const label = stripHtml(marker.tooltip);
+	const description = stripHtml(marker.popup);
+
+	const baseFields = {
+		id: marker.id,
+		worldName,
+		setId,
+		label,
+		description: description || undefined,
+		origin: 'edit' as const,
+		originalSetId: setId,
+	};
+
+	switch (marker.type) {
+		case LiveAtlasMarkerType.POINT: {
+			const p = marker as LiveAtlasPointMarker;
+			const iconId = parseIconIdFromUrl(p.iconUrl) || 'default';
+			return {
+				...baseFields,
+				type: 'point',
+				iconId,
+				location: {...p.location},
+			};
+		}
+		case LiveAtlasMarkerType.AREA: {
+			const a = marker as LiveAtlasAreaMarker;
+			// Areas may carry either a single ring (Coordinate[]) or a
+			// multi-polygon (Coordinate[][]). The editor only edits the
+			// outer ring, so flatten to that.
+			const isMulti = a.points.length > 0 && Array.isArray(a.points[0]);
+			const points = isMulti
+				? (a.points as Coordinate[][])[0] || []
+				: (a.points as Coordinate[]);
+			return {
+				...baseFields,
+				type: 'area',
+				points: points.map(p => ({...p})),
+				style: stylesFromLiveAtlas(a.style),
+			};
+		}
+		case LiveAtlasMarkerType.LINE: {
+			const l = marker as LiveAtlasLineMarker;
+			return {
+				...baseFields,
+				type: 'line',
+				points: l.points.map(p => ({...p})),
+				style: stylesFromLiveAtlas(l.style),
+			};
+		}
+		case LiveAtlasMarkerType.CIRCLE: {
+			const c = marker as LiveAtlasCircleMarker;
+			return {
+				...baseFields,
+				type: 'circle',
+				center: {...c.location},
+				radiusX: c.radius?.[0] ?? 0,
+				radiusZ: c.radius?.[1] ?? 0,
+				style: stylesFromLiveAtlas(c.style),
+			};
+		}
+	}
+	return null;
+};
+
+// Read a PathOptions blob (as exposed by LiveAtlas markers) into the
+// editor's PathStyle. Falls back to DEFAULT_STYLE for any field the server
+// didn't populate.
+const stylesFromLiveAtlas = (style: {
+	color?: string;
+	opacity?: number;
+	weight?: number;
+	fillColor?: string;
+	fillOpacity?: number;
+} | undefined): PathStyle => {
+	const ensureHash = (c: string | undefined): string => {
+		if (!c) return DEFAULT_STYLE.lineColor;
+		return c.startsWith('#') ? c : `#${c}`;
+	};
+	return {
+		lineColor: ensureHash(style?.color),
+		lineOpacity: style?.opacity ?? DEFAULT_STYLE.lineOpacity,
+		lineWeight: style?.weight ?? DEFAULT_STYLE.lineWeight,
+		fillColor: ensureHash(style?.fillColor),
+		fillOpacity: style?.fillOpacity ?? DEFAULT_STYLE.fillOpacity,
+	};
+};
+
+// Lightweight ref to an existing server marker — used when the user wants to
+// queue a deletion without first loading the marker for editing.
+export const makeDeleteEntry = (
+	setId: string,
+	worldName: string,
+	marker: LiveAtlasMarker,
+): LocalEditorMarker | null => {
+	const edit = liveAtlasToLocalEditor(setId, worldName, marker);
+	if (!edit) return null;
+	return {...edit, origin: 'delete'} as LocalEditorMarker;
 };
 
 // Returns the nearest target within `threshold` 2D blocks (XZ), or null.

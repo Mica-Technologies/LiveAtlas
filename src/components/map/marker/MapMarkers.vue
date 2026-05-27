@@ -16,10 +16,11 @@
 
 <script lang="ts">
 import {defineComponent, computed, onMounted, watch, onUnmounted} from "vue";
-import {Layer} from "leaflet";
+import {DomEvent, Layer, LeafletMouseEvent} from "leaflet";
 import {LiveAtlasAreaMarker, LiveAtlasMarker, LiveAtlasMarkerSet} from "@/index";
 import {DynmapMarkerUpdate} from "@/dynmap";
 import {useStore} from "@/store";
+import {MutationTypes} from "@/store/mutation-types";
 import {nonReactiveState} from "@/store/state";
 import LiveAtlasLayerGroup from "@/leaflet/layer/LiveAtlasLayerGroup";
 import {
@@ -46,12 +47,40 @@ export default defineComponent({
 
 		let converter = currentMap.value!.locationToLatLng.bind(currentMap.value);
 
+		// Right-click an existing server marker — when the local editor
+		// is open, surface a context menu with Edit / Queue deletion.
+		const wireContextMenu = (layer: Layer, markerId: string) => {
+			layer.on('contextmenu', (e: LeafletMouseEvent) => {
+				if(!store.state.localEditor.active) return;
+				DomEvent.stop(e);
+				store.commit(MutationTypes.LOCAL_EDITOR_OPEN_MARKER_MENU, {
+					x: e.originalEvent.clientX,
+					y: e.originalEvent.clientY,
+					setId: props.set.id,
+					markerId,
+				});
+			});
+		};
+
+		// Whether the server marker is currently mirrored as an edit or
+		// delete in the local editor — when true, hide it so the editable
+		// copy stands alone.
+		const isSuppressed = (markerId: string): boolean => {
+			return store.state.localEditor.markers.some(m =>
+				m.id === markerId
+				&& (m.origin === 'edit' || m.origin === 'delete')
+				&& (m.originalSetId === props.set.id || m.setId === props.set.id));
+		};
+
 		const createMarkers = () => {
 			nonReactiveState.markers.get(props.set.id)!.forEach((area: LiveAtlasMarker, id: string) => {
 				const layer = createMarkerLayer(area, converter);
 
 				layers.set(id, layer);
-				props.layerGroup.addLayer(layer);
+				wireContextMenu(layer, id);
+				if(!isSuppressed(id)) {
+					props.layerGroup.addLayer(layer);
+				}
 			});
 		};
 
@@ -73,12 +102,40 @@ export default defineComponent({
 				const layer = updateMarkerLayer(layers.get(update.id), update.payload as LiveAtlasAreaMarker, converter);
 
 				if(!layers.has(update.id)) {
-					props.layerGroup.addLayer(layer);
+					wireContextMenu(layer, update.id);
+				}
+
+				if(!isSuppressed(update.id)) {
+					if(!layers.has(update.id)) {
+						props.layerGroup.addLayer(layer);
+					}
 				}
 
 				layers.set(update.id, layer);
 			}
 		};
+
+		// Reactively add/remove markers from the visible layer group as the
+		// local editor's edit/delete entries change. Suppressed markers stay
+		// in the `layers` map (so update handlers keep working) but are not
+		// added to the rendered layer group.
+		const editorSuppressionFingerprint = computed(() =>
+			store.state.localEditor.markers
+				.filter(m => m.origin === 'edit' || m.origin === 'delete')
+				.filter(m => m.originalSetId === props.set.id || m.setId === props.set.id)
+				.map(m => m.id).sort().join(','));
+
+		watch(editorSuppressionFingerprint, () => {
+			for(const [id, layer] of layers) {
+				const suppressed = isSuppressed(id);
+				const inGroup = props.layerGroup.hasLayer(layer);
+				if(suppressed && inGroup) {
+					props.layerGroup.removeLayer(layer);
+				} else if(!suppressed && !inGroup) {
+					props.layerGroup.addLayer(layer);
+				}
+			}
+		});
 
 		watch(currentMap, (newValue, oldValue) => {
 			if(newValue && (!oldValue || oldValue.world === newValue.world)) {

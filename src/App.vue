@@ -22,6 +22,7 @@
 		<Sidebar></Sidebar>
 		<LocalEditor></LocalEditor>
 		<LocalEditorMenu></LocalEditorMenu>
+		<LocalEditorMarkerMenu></LocalEditorMarkerMenu>
 		<LocalEditorCommandsModal></LocalEditorCommandsModal>
 		<notifications position="bottom center" :speed="250" :max="3" :ignoreDuplicates="true" classes="notification" />
 	</v-app>
@@ -42,6 +43,7 @@ import {hideSplash, showSplash, showSplashError} from '@/util/splash';
 import LoginModal from "@/components/login/LoginModal.vue";
 import LocalEditor from "@/components/LocalEditor.vue";
 import LocalEditorMenu from "@/components/LocalEditorMenu.vue";
+import LocalEditorMarkerMenu from "@/components/LocalEditorMarkerMenu.vue";
 import LocalEditorCommandsModal from "@/components/LocalEditorCommandsModal.vue";
 import {clearPlayerImageCache} from "@/util/images";
 
@@ -54,6 +56,7 @@ export default defineComponent({
 		LoginModal,
 		LocalEditor,
 		LocalEditorMenu,
+		LocalEditorMarkerMenu,
 		LocalEditorCommandsModal,
 	},
 

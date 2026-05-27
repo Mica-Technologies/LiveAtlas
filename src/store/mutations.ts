@@ -47,6 +47,7 @@ import {getServerMapProvider} from "@/util/config";
 import {getDefaultPlayerImage} from "@/util/images";
 import {
 	clearPersisted as clearPersistedLocalEditor,
+	liveAtlasToLocalEditor,
 	loadPersisted as loadPersistedLocalEditor,
 	LocalEditorMarker,
 	LocalEditorSet,
@@ -114,6 +115,12 @@ export type Mutations<S = State> = {
 	[MutationTypes.LOCAL_EDITOR_SET_COMMANDS_MODAL](state: S, open: boolean): void
 	[MutationTypes.LOCAL_EDITOR_OPEN_MENU](state: S, payload: {x: number, y: number}): void
 	[MutationTypes.LOCAL_EDITOR_CLOSE_MENU](state: S): void
+	[MutationTypes.LOCAL_EDITOR_OPEN_MARKER_MENU](state: S, payload: {x: number, y: number, setId: string, markerId: string}): void
+	[MutationTypes.LOCAL_EDITOR_CLOSE_MARKER_MENU](state: S): void
+	[MutationTypes.LOCAL_EDITOR_BEGIN_EDIT](state: S, payload: {setId: string, markerId: string, worldName: string}): void
+	[MutationTypes.LOCAL_EDITOR_QUEUE_DELETE](state: S, payload: {setId: string, markerId: string, worldName: string}): void
+	[MutationTypes.LOCAL_EDITOR_TOGGLE_DELETE](state: S, id: string): void
+	[MutationTypes.LOCAL_EDITOR_DISCARD_EDIT](state: S, id: string): void
 	[MutationTypes.LOCAL_EDITOR_START_DRAWING](state: S, payload: {id: string, kind: 'area' | 'line' | 'circle-radius'}): void
 	[MutationTypes.LOCAL_EDITOR_FINISH_DRAWING](state: S): void
 	[MutationTypes.LOCAL_EDITOR_START_PICKING](state: S, payload: {markerId: string, target: 'line' | 'fill'}): void
@@ -650,6 +657,81 @@ export const mutations: MutationTree<State> & Mutations = {
 
 	[MutationTypes.LOCAL_EDITOR_CLOSE_MENU](state: State): void {
 		state.localEditor.menu.open = false;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_OPEN_MARKER_MENU](state: State, {x, y, setId, markerId}): void {
+		state.localEditor.markerMenu.x = x;
+		state.localEditor.markerMenu.y = y;
+		state.localEditor.markerMenu.setId = setId;
+		state.localEditor.markerMenu.markerId = markerId;
+		state.localEditor.markerMenu.open = true;
+	},
+
+	[MutationTypes.LOCAL_EDITOR_CLOSE_MARKER_MENU](state: State): void {
+		state.localEditor.markerMenu.open = false;
+	},
+
+	// Move a server marker into the pending list as an editable copy. If the
+	// marker is already pending (edit or delete), just select it and let the
+	// caller flip the origin if needed.
+	[MutationTypes.LOCAL_EDITOR_BEGIN_EDIT](state: State, {setId, markerId, worldName}): void {
+		const existing = state.localEditor.markers.find(m =>
+			m.id === markerId && (m.originalSetId === setId || m.setId === setId));
+		if(existing) {
+			// Already pending — if it's queued for deletion, restore to edit.
+			if(existing.origin === 'delete') existing.origin = 'edit';
+			state.localEditor.selectedId = existing.id;
+			return;
+		}
+		const source = nonReactiveState.markers.get(setId)?.get(markerId);
+		if(!source) return;
+		const converted = liveAtlasToLocalEditor(setId, worldName, source);
+		if(!converted) return;
+		state.localEditor.markers.push(converted);
+		state.localEditor.selectedId = converted.id;
+	},
+
+	// Queue a deletion for a server marker. Same shape as begin-edit but
+	// the resulting pending entry has origin='delete'.
+	[MutationTypes.LOCAL_EDITOR_QUEUE_DELETE](state: State, {setId, markerId, worldName}): void {
+		const existing = state.localEditor.markers.find(m =>
+			m.id === markerId && (m.originalSetId === setId || m.setId === setId));
+		if(existing) {
+			existing.origin = 'delete';
+			state.localEditor.selectedId = existing.id;
+			return;
+		}
+		const source = nonReactiveState.markers.get(setId)?.get(markerId);
+		if(!source) return;
+		const converted = liveAtlasToLocalEditor(setId, worldName, source);
+		if(!converted) return;
+		converted.origin = 'delete';
+		state.localEditor.markers.push(converted);
+		state.localEditor.selectedId = converted.id;
+	},
+
+	// Flip a pending marker between edit and delete origins. Used by the
+	// "Queue deletion" / "Restore" buttons in the form. No-op for origin='new'.
+	[MutationTypes.LOCAL_EDITOR_TOGGLE_DELETE](state: State, id: string): void {
+		const marker = state.localEditor.markers.find(m => m.id === id);
+		if(!marker) return;
+		if(marker.origin === 'edit') marker.origin = 'delete';
+		else if(marker.origin === 'delete') marker.origin = 'edit';
+	},
+
+	// Drop a pending edit/delete entry entirely, restoring the server marker's
+	// original visibility on the map.
+	[MutationTypes.LOCAL_EDITOR_DISCARD_EDIT](state: State, id: string): void {
+		const index = state.localEditor.markers.findIndex(m => m.id === id);
+		if(index === -1) return;
+		// Only meaningful for edit/delete entries — refuse to silently drop
+		// freshly-created markers (the regular delete mutation handles those).
+		const m = state.localEditor.markers[index];
+		if(m.origin !== 'edit' && m.origin !== 'delete') return;
+		state.localEditor.markers.splice(index, 1);
+		if(state.localEditor.selectedId === id) {
+			state.localEditor.selectedId = undefined;
+		}
 	},
 
 	[MutationTypes.LOCAL_EDITOR_START_DRAWING](state: State, {id, kind}): void {

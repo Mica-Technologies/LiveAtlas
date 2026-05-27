@@ -57,6 +57,15 @@ export interface LocalEditorState {
 		x: number;
 		y: number;
 	};
+	// Per-marker right-click menu — opened by contextmenu on an existing
+	// server marker so the user can edit it or queue a deletion.
+	markerMenu: {
+		open: boolean;
+		x: number;
+		y: number;
+		setId: string;
+		markerId: string;
+	};
 	drawing?: {
 		id: string;
 		kind: LocalEditorDrawingKind;
@@ -284,6 +293,7 @@ export const state: State = {
 		selectedId: undefined,
 		commandsModalOpen: false,
 		menu: {open: false, x: 0, y: 0},
+		markerMenu: {open: false, x: 0, y: 0, setId: '', markerId: ''},
 		drawing: undefined,
 		picking: undefined,
 		snapEnabled: true,
