@@ -28,6 +28,7 @@
 			<CoordinatesControl v-if="coordinatesControlEnabled" :leaflet="leaflet"></CoordinatesControl>
 			<GotoCoordinatesControl :leaflet="leaflet"></GotoCoordinatesControl>
 			<MeasureControl :leaflet="leaflet"></MeasureControl>
+			<ScreenshotControl :leaflet="leaflet"></ScreenshotControl>
 			<LinkControl v-if="linkControlEnabled" :leaflet="leaflet"></LinkControl>
 			<ClockControl v-if="clockControlEnabled" :leaflet="leaflet"></ClockControl>
 
@@ -52,6 +53,7 @@ import LocalEditorLayer from "@/components/map/layer/LocalEditorLayer.vue";
 import CoordinatesControl from "@/components/map/control/CoordinatesControl.vue";
 import GotoCoordinatesControl from "@/components/map/control/GotoCoordinatesControl.vue";
 import MeasureControl from "@/components/map/control/MeasureControl.vue";
+import ScreenshotControl from "@/components/map/control/ScreenshotControl.vue";
 import ClockControl from "@/components/map/control/ClockControl.vue";
 import LinkControl from "@/components/map/control/LinkControl.vue";
 import ChatControl from "@/components/map/control/ChatControl.vue";
@@ -73,6 +75,7 @@ export default defineComponent({
 		CoordinatesControl,
 		GotoCoordinatesControl,
 		MeasureControl,
+		ScreenshotControl,
 		ClockControl,
 		LinkControl,
 		ChatControl,
