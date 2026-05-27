@@ -169,12 +169,21 @@ img {
 		line-height: 2rem;
 		margin-top: auto;
 		z-index: 1;
-		padding: 0.1rem 0.1rem 0;
-		// Soft glow + downward drop so the digits stay legible while the
-		// sun or moon is rising directly behind the text.
-		text-shadow:
-			0 0 6px rgba(0, 0, 0, 0.55),
-			0 1px 2px rgba(0, 0, 0, 0.65);
+		// A small frosted pill behind the digits so they read clearly
+		// even when the sun's yellow or the moon's white passes through
+		// behind the glyphs. --background-base flips with the theme
+		// (semi-transparent dark on the dark theme, semi-transparent
+		// light on the light theme) so the contrast direction is always
+		// right relative to --text-day / --text-night. isolation:isolate
+		// keeps this backdrop-filter from chaining off the parent
+		// clock's own filter and rendering weaker than expected.
+		padding: 0.25rem 0.9rem;
+		border-radius: 0.4rem;
+		background-color: var(--background-base);
+		backdrop-filter: blur(6px);
+		-webkit-backdrop-filter: blur(6px);
+		isolation: isolate;
+		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 
 		&.night {
 			color: var(--text-night);
