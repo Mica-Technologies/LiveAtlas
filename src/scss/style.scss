@@ -169,17 +169,15 @@ img {
 		line-height: 2rem;
 		margin-top: auto;
 		z-index: 1;
-		// A small frosted pill behind the digits so they read clearly
-		// even when the sun's yellow or the moon's white passes through
-		// behind the glyphs. --background-base flips with the theme
-		// (semi-transparent dark on the dark theme, semi-transparent
-		// light on the light theme) so the contrast direction is always
-		// right relative to --text-day / --text-night. isolation:isolate
-		// keeps this backdrop-filter from chaining off the parent
-		// clock's own filter and rendering weaker than expected.
+		// A small blurred pill behind the digits so the sun's yellow or
+		// the moon's white softens behind the glyphs instead of bleeding
+		// through them sharply. No background colour — pure backdrop
+		// blur, since the digits already pop against a blurred icon.
+		// isolation:isolate keeps this backdrop-filter from chaining off
+		// the parent clock's own filter and rendering weaker than
+		// expected.
 		padding: 0.25rem 0.9rem;
 		border-radius: 0.4rem;
-		background-color: var(--background-base);
 		backdrop-filter: blur(6px);
 		-webkit-backdrop-filter: blur(6px);
 		isolation: isolate;
