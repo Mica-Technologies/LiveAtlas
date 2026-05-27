@@ -230,19 +230,6 @@ export default defineComponent({
 			}
 		}
 
-		@media (max-width: 480px) {
-			flex-direction: column;
-			align-items: flex-end;
-			margin: 0;
-			position: absolute;
-			right: var(--ui-element-spacing);
-			bottom: var(--ui-element-spacing);
-
-			button + button {
-				margin-left: 0;
-				margin-top: var(--ui-element-spacing);
-			}
-		}
 	}
 
 	.sidebar__content {
@@ -283,14 +270,6 @@ export default defineComponent({
 
 	@media (max-width: 600px) {
 		padding-bottom: 0.8rem;
-	}
-
-	// Only narrow phones flip the sidebar button row into the
-	// absolutely-positioned column overlay (see .sidebar__buttons
-	// below) — that's the only case the sidebar content needs to
-	// reserve right-padding to not slide under the button column.
-	@media (max-width: 480px) {
-		padding-right: calc(var(--ui-button-size) + var(--ui-element-spacing) * 2);
 	}
 
 	@media (max-width: 400px) {
