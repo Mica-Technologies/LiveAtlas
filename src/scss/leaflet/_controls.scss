@@ -156,6 +156,11 @@
 	// buttons sitting in the same column, and the body's backdrop-filter
 	// would render those buttons through the panel as a ghostly outline.
 	// To the right, the body only ever sits over the map.
+	//
+	// `isolation: isolate` gives the body its own stacking context so the
+	// nested backdrop-filter chain doesn't see the wrapper's pre-filtered
+	// paint as its backdrop — without it the body looked noticeably more
+	// transparent than the .leaflet-control chrome it should match.
 	.popout-control__body {
 		display: none;
 		flex-direction: column;
@@ -165,6 +170,7 @@
 		position: absolute;
 		bottom: 0;
 		left: calc(100% + var(--ui-element-spacing));
+		isolation: isolate;
 		background-color: var(--background-base);
 		color: var(--text-base);
 		border: 1px solid var(--border-color);
@@ -178,8 +184,15 @@
 	// while the body is visible — otherwise the popout panel, which lives
 	// inside this wrapper's stacking context, gets painted behind the
 	// neighbouring controls' toggles that come later in DOM.
+	//
+	// Also drop the wrapper's own backdrop-filter while expanded: a child
+	// with backdrop-filter inside a parent that also has one ends up
+	// filtering the parent's already-filtered output, which is why the
+	// popout body read as a much weaker blur than the buttons did.
 	&.popout-control--expanded {
 		z-index: 900;
+		backdrop-filter: none;
+		-webkit-backdrop-filter: none;
 	}
 
 	&.popout-control--expanded .popout-control__body {
