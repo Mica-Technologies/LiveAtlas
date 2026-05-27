@@ -61,9 +61,18 @@ html {
 	--ui-button-size: 5rem;
 	--ui-element-spacing: 1rem;
 
-	@media (max-width: 400px), (max-height: 480px) {
-		--ui-button-size: 4.4rem;
+	// Tablets and most phones in landscape — buttons take a noticeable
+	// chunk of the viewport at 5rem so step them down at 600px / 500h.
+	@media (max-width: 600px), (max-height: 500px) {
+		--ui-button-size: 4rem;
 		--ui-element-spacing: 0.7rem;
+	}
+
+	// Phones in portrait. Below this the controls were swallowing
+	// 30-40% of the visible map.
+	@media (max-width: 400px), (max-height: 400px) {
+		--ui-button-size: 3.6rem;
+		--ui-element-spacing: 0.5rem;
 	}
 }
 

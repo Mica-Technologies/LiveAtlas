@@ -261,6 +261,17 @@ export default defineComponent({
 		will-change: transform;
 		order: 1;
 
+		// Cap the panel width to the viewport on mobile so a single
+		// section doesn't push past the screen edge. The button column
+		// still occupies the right strip via padding above.
+		@media (max-width: 600px) {
+			width: min(22rem, calc(100vw - 6.5rem));
+		}
+
+		@media (max-width: 400px) {
+			width: min(18rem, calc(100vw - 5rem));
+		}
+
 		&:not(:hover):not(:focus-within) {
 			scrollbar-color: var(--background-base-solid) transparent;
 		}
@@ -270,13 +281,13 @@ export default defineComponent({
 		}
 	}
 
-	@media (max-width: 480px) {
-		padding-right: 7rem;
+	@media (max-width: 600px) {
+		padding-right: calc(var(--ui-button-size) + var(--ui-element-spacing) * 2);
 		padding-bottom: 0.8rem;
 	}
 
 	@media (max-width: 400px) {
-		padding-right: 6.5rem;
+		padding-right: calc(var(--ui-button-size) + var(--ui-element-spacing) * 2);
 		padding-bottom: 0.3rem;
 	}
 
