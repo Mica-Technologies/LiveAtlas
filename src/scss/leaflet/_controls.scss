@@ -121,6 +121,19 @@
 	}
 }
 
+// Active state for the measure tool's toggle. The Vue wrapper adds
+// .leaflet-control-measure--active to the button when measuring is on,
+// and adds .map--measuring to the map container so the cursor flips to
+// a crosshair.
+.leaflet-control-measure--active {
+	color: var(--text-emphasis) !important;
+	background-color: var(--background-light) !important;
+}
+
+.map--measuring .leaflet-container {
+	cursor: crosshair;
+}
+
 .leaflet-control-goto {
 	display: flex;
 	align-items: stretch;

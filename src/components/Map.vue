@@ -27,6 +27,7 @@
 			<LogoControl v-for="logo in logoControls" :key="JSON.stringify(logo)" :options="logo" :leaflet="leaflet"></LogoControl>
 			<CoordinatesControl v-if="coordinatesControlEnabled" :leaflet="leaflet"></CoordinatesControl>
 			<GotoCoordinatesControl :leaflet="leaflet"></GotoCoordinatesControl>
+			<MeasureControl :leaflet="leaflet"></MeasureControl>
 			<LinkControl v-if="linkControlEnabled" :leaflet="leaflet"></LinkControl>
 			<ClockControl v-if="clockControlEnabled" :leaflet="leaflet"></ClockControl>
 
@@ -50,6 +51,7 @@ import MarkerSetLayer from "@/components/map/layer/MarkerSetLayer.vue";
 import LocalEditorLayer from "@/components/map/layer/LocalEditorLayer.vue";
 import CoordinatesControl from "@/components/map/control/CoordinatesControl.vue";
 import GotoCoordinatesControl from "@/components/map/control/GotoCoordinatesControl.vue";
+import MeasureControl from "@/components/map/control/MeasureControl.vue";
 import ClockControl from "@/components/map/control/ClockControl.vue";
 import LinkControl from "@/components/map/control/LinkControl.vue";
 import ChatControl from "@/components/map/control/ChatControl.vue";
@@ -70,6 +72,7 @@ export default defineComponent({
 		LocalEditorLayer,
 		CoordinatesControl,
 		GotoCoordinatesControl,
+		MeasureControl,
 		ClockControl,
 		LinkControl,
 		ChatControl,
