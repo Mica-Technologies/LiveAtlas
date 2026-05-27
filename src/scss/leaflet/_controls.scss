@@ -169,6 +169,14 @@
 		-webkit-backdrop-filter: blur(24px) saturate(1.2);
 	}
 
+	// Lift the whole wrapper above sibling .leaflet-controls (z-index 800)
+	// while the body is visible — otherwise the popout panel, which lives
+	// inside this wrapper's stacking context, gets painted behind the
+	// neighbouring controls' toggles that come later in DOM.
+	&.popout-control--expanded {
+		z-index: 900;
+	}
+
 	&.popout-control--expanded .popout-control__body {
 		display: flex;
 	}
