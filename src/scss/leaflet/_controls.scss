@@ -123,50 +123,30 @@
 
 // Shared base for collapsible bottomleft popout controls (Tools + Share).
 //
-// The wrapper itself is invisible — its only job is to hold the toggle
-// button at the bottom (in column-reverse flow) and the popout body
-// above it. The toggle is sized and styled identically to a plain
-// .leaflet-control-button so it blends with the rest of the bottomleft
-// column; the body has its own panel chrome.
+// The wrapper keeps its inherited .leaflet-control chrome (background,
+// border, shadow, backdrop-filter) so the visible toggle reads as a
+// plain Leaflet button identical to chat / layers. The toggle button
+// is forced transparent so the wrapper's chrome shows through it, and
+// the body floats above the wrapper as an absolutely-positioned panel
+// so the wrapper itself stays button-sized in the corner column.
 .popout-control {
-	display: flex;
-	flex-direction: column-reverse;
-	align-items: flex-start;
-	gap: var(--ui-element-spacing);
+	position: relative; // ensure absolute body anchors to us
+	width: var(--ui-button-size);
+	height: var(--ui-button-size);
 
-	// Cancel the .leaflet-control base styling on the wrapper — the
-	// chrome belongs on the toggle and the body, not on the empty
-	// space between them.
-	background: none !important;
-	border: none !important;
-	box-shadow: none !important;
-	backdrop-filter: none !important;
-	pointer-events: none;
-
-	// .leaflet-control-button already gives the toggle a width/height +
-	// %button icon centering. We add the chrome (background, border,
-	// shadow, backdrop) so it visually matches a standalone Leaflet
-	// control button like the chat or layers toggles.
-	//
-	// The selector duplicates the four :not() qualifiers from the base
-	// rule `.leaflet-control > a/button:not(:hover)...:not([aria-expanded=true])`
-	// (which forces the button transparent to avoid double-painting
-	// semi-transparent backgrounds). Matching the specificity lets our
-	// later rule win and keeps the button opaque in its rest state.
-	> .popout-control__toggle:not(:hover):not(:focus):not(:active):not([aria-expanded=true]),
+	// Override the .leaflet-control rule that makes child buttons
+	// transparent-on-rest *and* the %button placeholder that paints them
+	// opaque-on-active. Either way, we want the toggle invisible so the
+	// wrapper's chrome is the only thing the user sees.
 	> .popout-control__toggle {
-		pointer-events: auto;
-		background-color: var(--background-base);
-		color: var(--text-base);
-		border: 1px solid var(--border-color);
-		border-radius: var(--border-radius);
-		box-shadow: var(--box-shadow);
-		backdrop-filter: blur(24px) saturate(1.2);
-		-webkit-backdrop-filter: blur(24px) saturate(1.2);
-		transition: background-color 0.15s ease, box-shadow 0.15s ease;
+		background-color: transparent !important;
+		border: none !important;
+		box-shadow: none !important;
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
 	}
 
-	> .popout-control__toggle:hover {
+	&:hover {
 		background-color: var(--background-hover);
 		color: var(--text-hover);
 	}
@@ -177,8 +157,11 @@
 		gap: 0.6rem;
 		padding: 0.8rem;
 		width: 22rem;
-		pointer-events: auto;
+		position: absolute;
+		bottom: calc(100% + var(--ui-element-spacing));
+		left: 0;
 		background-color: var(--background-base);
+		color: var(--text-base);
 		border: 1px solid var(--border-color);
 		border-radius: var(--border-radius);
 		box-shadow: var(--box-shadow);
@@ -582,16 +565,22 @@
 			}
 		}
 
-		.leaflet-control-layers {
+		// New collapsible tool stacks slot directly under the zoom
+		// buttons, before the existing layer / chat controls.
+		.tools-control {
 			order: 11;
+		}
+
+		.link-control {
+			order: 12;
+		}
+
+		.leaflet-control-layers {
+			order: 13;
 		}
 
 		.leaflet-control-chat {
 			order: 20;
-		}
-
-		.leaflet-control-link {
-			order: 21;
 		}
 
 		.leaflet-control-coordinates {

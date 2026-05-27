@@ -9,7 +9,7 @@
   -->
 
 <script lang="ts">
-import {defineComponent, nextTick, onMounted, onUnmounted, ref, watch} from "vue";
+import {defineComponent, onMounted, onUnmounted, ref, watch} from "vue";
 import {LatLng, LeafletMouseEvent, Polyline, CircleMarker} from "leaflet";
 import {ToolsControl} from "@/leaflet/control/ToolsControl";
 import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
@@ -141,25 +141,7 @@ export default defineComponent({
 		watch(expanded, v => control.setExpanded(v));
 		watch(measureActive, v => control.setMeasureActive(v));
 
-		onMounted(() => {
-			props.leaflet.addControl(control);
-
-			// Leaflet prepends new controls in `bottom*` corners, so a freshly
-			// added control lands at the top of the bottomleft column.
-			// We want this toggle directly under the zoom +/- buttons, so
-			// after the next tick (once every sibling control has had a
-			// chance to mount) move our DOM node to be right after the zoom
-			// control's container.
-			void nextTick(() => {
-				const myEl = control.getContainer();
-				const corner = myEl?.parentElement;
-				if(!myEl || !corner) return;
-				const zoomEl = corner.querySelector(':scope > .leaflet-control-zoom') as HTMLElement | null;
-				if(zoomEl) {
-					corner.insertBefore(myEl, zoomEl.nextSibling);
-				}
-			});
-		});
+		onMounted(() => props.leaflet.addControl(control));
 		onUnmounted(() => {
 			if(measureActive.value) stopMeasure();
 			props.leaflet.removeControl(control);
