@@ -621,7 +621,7 @@ export default defineComponent({
 		top: var(--ui-element-spacing);
 		left: var(--ui-element-spacing);
 		bottom: var(--ui-element-spacing);
-		width: 34rem;
+		width: 40rem;
 		max-width: calc(100vw - 2 * var(--ui-element-spacing));
 		z-index: 120;
 		display: flex;
