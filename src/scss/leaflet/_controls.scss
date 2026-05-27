@@ -616,11 +616,7 @@
 		align-items: flex-end;
 		justify-content: flex-end;
 		gap: var(--ui-element-spacing);
-		// Reserve enough vertical clearance for the sidebar button row that
-		// lives in this corner. The sidebar element supplies its own bottom
-		// padding already, so only one spacing on top is needed here —
-		// previously this was *2 which left a button-sized gap on mobile.
-		padding-bottom: calc(var(--ui-button-size) + var(--ui-element-spacing));
+		padding-bottom: calc(var(--ui-button-size) + (var(--ui-element-spacing) * 2));
 	}
 
 	&.leaflet-center {

@@ -282,12 +282,18 @@ export default defineComponent({
 	}
 
 	@media (max-width: 600px) {
-		padding-right: calc(var(--ui-button-size) + var(--ui-element-spacing) * 2);
 		padding-bottom: 0.8rem;
 	}
 
-	@media (max-width: 400px) {
+	// Only narrow phones flip the sidebar button row into the
+	// absolutely-positioned column overlay (see .sidebar__buttons
+	// below) — that's the only case the sidebar content needs to
+	// reserve right-padding to not slide under the button column.
+	@media (max-width: 480px) {
 		padding-right: calc(var(--ui-button-size) + var(--ui-element-spacing) * 2);
+	}
+
+	@media (max-width: 400px) {
 		padding-bottom: 0.3rem;
 	}
 
