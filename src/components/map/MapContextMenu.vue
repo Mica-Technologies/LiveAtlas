@@ -24,6 +24,12 @@
 				<v-list-item-title>{{ locationLabel }}</v-list-item-title>
 			</v-list-item>
 			<v-list-item
+				v-clipboard:copy="tpCommand"
+				v-clipboard:success="copySuccess"
+				v-clipboard:error="copyError">
+				<v-list-item-title>Copy /tp command</v-list-item-title>
+			</v-list-item>
+			<v-list-item
 				v-clipboard:copy="url"
 				v-clipboard:success="copySuccess"
 				v-clipboard:error="copyError">
@@ -143,6 +149,16 @@ export default defineComponent({
 
 			locationCopy = computed(() => {
 				return `${Math.round(location.value.x)}, ${Math.round(location.value.z)}`;
+			}),
+
+			// Dynmap's latLngToLocation defaults Y to 64 (passed above) since
+			// the map projection doesn't carry elevation. /tp X Y Z drops the
+			// player at sea level which is a sensible default for survival.
+			tpCommand = computed(() => {
+				const x = Math.round(location.value.x);
+				const y = Math.round(location.value.y);
+				const z = Math.round(location.value.z);
+				return `/tp ${x} ${y} ${z}`;
 			}),
 
 			embedBaseUrl = new URLSearchParams(window.location.search).get('embedBaseUrl'),
@@ -390,6 +406,7 @@ export default defineComponent({
 
 			locationLabel,
 			locationCopy,
+			tpCommand,
 			currentMap,
 			mapCount,
 			style,
