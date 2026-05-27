@@ -143,10 +143,18 @@
 	backdrop-filter: none !important;
 	pointer-events: none;
 
+	// .leaflet-control-button already gives the toggle a width/height +
+	// %button icon centering. We add the chrome (background, border,
+	// shadow, backdrop) so it visually matches a standalone Leaflet
+	// control button like the chat or layers toggles.
+	//
+	// The selector duplicates the four :not() qualifiers from the base
+	// rule `.leaflet-control > a/button:not(:hover)...:not([aria-expanded=true])`
+	// (which forces the button transparent to avoid double-painting
+	// semi-transparent backgrounds). Matching the specificity lets our
+	// later rule win and keeps the button opaque in its rest state.
+	> .popout-control__toggle:not(:hover):not(:focus):not(:active):not([aria-expanded=true]),
 	> .popout-control__toggle {
-		// .leaflet-control-button already sets width/height +
-		// %button-style padding/icon centering; just make sure the
-		// chrome matches the standalone Leaflet button look exactly.
 		pointer-events: auto;
 		background-color: var(--background-base);
 		color: var(--text-base);
@@ -156,11 +164,11 @@
 		backdrop-filter: blur(24px) saturate(1.2);
 		-webkit-backdrop-filter: blur(24px) saturate(1.2);
 		transition: background-color 0.15s ease, box-shadow 0.15s ease;
+	}
 
-		&:hover {
-			background-color: var(--background-hover);
-			color: var(--text-hover);
-		}
+	> .popout-control__toggle:hover {
+		background-color: var(--background-hover);
+		color: var(--text-hover);
 	}
 
 	.popout-control__body {

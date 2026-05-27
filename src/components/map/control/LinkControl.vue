@@ -9,7 +9,7 @@
   -->
 
 <script lang="ts">
-import {defineComponent, onMounted, onUnmounted, ref, watch} from "vue";
+import {defineComponent, nextTick, onMounted, onUnmounted, ref, watch} from "vue";
 import {toClipboard} from "@soerenmartius/vue3-clipboard";
 import {notify} from "@kyvg/vue3-notification";
 import {LinkControl} from "@/leaflet/control/LinkControl";
@@ -74,7 +74,26 @@ export default defineComponent({
 
 		watch(expanded, v => control.setExpanded(v));
 
-		onMounted(() => props.leaflet.addControl(control));
+		onMounted(() => {
+			props.leaflet.addControl(control);
+
+			// Same as ToolsControl — Leaflet prepends to bottom corners, so
+			// without intervention this lands at the top of the column. We
+			// want it below the zoom buttons, and if the Tools toggle is
+			// already in place, below that too (so Tools stays the first
+			// thing under +/-).
+			void nextTick(() => {
+				const myEl = control.getContainer();
+				const corner = myEl?.parentElement;
+				if(!myEl || !corner) return;
+				const toolsEl = corner.querySelector(':scope > .tools-control') as HTMLElement | null;
+				const zoomEl = corner.querySelector(':scope > .leaflet-control-zoom') as HTMLElement | null;
+				const anchor = toolsEl || zoomEl;
+				if(anchor) {
+					corner.insertBefore(myEl, anchor.nextSibling);
+				}
+			});
+		});
 		onUnmounted(() => props.leaflet.removeControl(control));
 	},
 
