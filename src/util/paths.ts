@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {Direction, LatLngExpression, Layer, PathOptions} from "leaflet";
+import {Content, Direction, LatLngExpression, Layer, PathOptions, TooltipOptions} from "leaflet";
 import {LiveAtlasPathMarker} from "@/index";
 
 export const tooltipOptions = {
@@ -69,13 +69,40 @@ export const createPopup = (options: LiveAtlasPathMarker, className: string): HT
 	return popup;
 };
 
-// The hover tooltip and the click popup carry overlapping content, so when
-// the popup opens we hide any open tooltip on the same layer. The tooltip
-// binding stays intact and returns naturally on the next mouseover after
-// the popup closes — no rebind needed.
+// Keep the hover tooltip and the click popup from being on screen at the
+// same time. The previous implementation just called closeTooltip() on
+// popupopen, but on touch the event order is often:
+//   1. tap → click → popup opens (handler runs, tooltip not open yet)
+//   2. simulated mouseover fires later → tooltip opens
+// leaving both visible. Instead, unbind the tooltip outright when the
+// popup opens so it physically cannot appear, then rebind on popupclose
+// using the saved content + options so the original hover behaviour
+// returns afterward.
 //
-// `off('popupopen')` first so re-binding during updateXLayer doesn't
-// accumulate duplicate listeners across marker updates.
+// `off()` first so re-binding during updateXLayer doesn't accumulate
+// duplicate listeners across marker updates.
 export const suppressTooltipWhilePopupOpen = (layer: Layer): void => {
-	layer.off('popupopen').on('popupopen', () => layer.closeTooltip());
+	let saved: {content: Content; options: TooltipOptions} | null = null;
+
+	const onPopupOpen = () => {
+		const tt = layer.getTooltip();
+		if(tt && !saved) {
+			saved = {
+				content: tt.getContent() as Content,
+				options: {...tt.options},
+			};
+			layer.closeTooltip();
+			layer.unbindTooltip();
+		}
+	};
+
+	const onPopupClose = () => {
+		if(saved) {
+			layer.bindTooltip(saved.content, saved.options);
+			saved = null;
+		}
+	};
+
+	layer.off('popupopen').on('popupopen', onPopupOpen);
+	layer.off('popupclose').on('popupclose', onPopupClose);
 };
