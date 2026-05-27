@@ -23,6 +23,7 @@
 		<LocalEditor></LocalEditor>
 		<LocalEditorMenu></LocalEditorMenu>
 		<LocalEditorCommandsModal></LocalEditorCommandsModal>
+		<KeyboardShortcutsModal></KeyboardShortcutsModal>
 		<notifications position="bottom center" :speed="250" :max="3" :ignoreDuplicates="true" classes="notification" />
 	</v-app>
 </template>
@@ -43,6 +44,7 @@ import LoginModal from "@/components/login/LoginModal.vue";
 import LocalEditor from "@/components/LocalEditor.vue";
 import LocalEditorMenu from "@/components/LocalEditorMenu.vue";
 import LocalEditorCommandsModal from "@/components/LocalEditorCommandsModal.vue";
+import KeyboardShortcutsModal from "@/components/KeyboardShortcutsModal.vue";
 import {clearPlayerImageCache} from "@/util/images";
 
 export default defineComponent({
@@ -55,6 +57,7 @@ export default defineComponent({
 		LocalEditor,
 		LocalEditorMenu,
 		LocalEditorCommandsModal,
+		KeyboardShortcutsModal,
 	},
 
 	setup() {

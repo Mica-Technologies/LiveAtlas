@@ -33,6 +33,7 @@ import Pl3xmapMapProvider from "@/providers/Pl3xmapMapProvider";
 import {showSplashError} from "@/util/splash";
 import ConfigurationError from "@/errors/ConfigurationError";
 import OverviewerMapProvider from "@/providers/OverviewerMapProvider";
+import {registerKeyboardShortcuts} from "@/util/keyboardShortcuts";
 import 'virtual:svg-icons-register';
 
 const splash = document.getElementById('splash');
@@ -61,6 +62,8 @@ registerMapProvider('dynmap', DynmapMapProvider);
 registerMapProvider('pl3xmap', Pl3xmapMapProvider);
 registerMapProvider('squaremap', Pl3xmapMapProvider);
 registerMapProvider('overviewer', OverviewerMapProvider);
+
+registerKeyboardShortcuts(store);
 
 const config = window.liveAtlasConfig;
 window.liveAtlasLoaded = true;

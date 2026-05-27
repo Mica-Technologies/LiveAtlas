@@ -123,7 +123,7 @@ interface LiveAtlasUIConfig {
 }
 
 export type LiveAtlasUIElement = 'layers' | 'chat' | LiveAtlasSidebarSection;
-export type LiveAtlasUIModal = 'login' | 'settings';
+export type LiveAtlasUIModal = 'login' | 'settings' | 'shortcuts';
 export type LiveAtlasSidebarSection = 'servers' | 'players' | 'maps' | 'markers';
 export type LiveAtlasDimension = 'overworld' | 'nether' | 'end';
 
