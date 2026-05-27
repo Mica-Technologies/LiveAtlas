@@ -121,69 +121,153 @@
 	}
 }
 
-// Active state for the measure tool's toggle. The Vue wrapper adds
-// .leaflet-control-measure--active to the button when measuring is on,
-// and adds .map--measuring to the map container so the cursor flips to
-// a crosshair.
-.leaflet-control-measure--active {
-	color: var(--text-emphasis) !important;
-	background-color: var(--background-light) !important;
+// Bottomleft collapsible tools panel (goto-coords + measure + screenshot).
+// The body grows UPWARD from the toggle button using column-reverse on
+// the flex container, so the toggle stays anchored at the bottom corner.
+.tools-control {
+	display: flex;
+	flex-direction: column-reverse;
+	align-items: stretch;
+	gap: var(--ui-element-spacing);
+	background: none !important;
+	border: none !important;
+	box-shadow: none !important;
+	backdrop-filter: none !important;
+	pointer-events: none;
+
+	> .tools-control__toggle,
+	> .tools-control__body {
+		pointer-events: auto;
+		background-color: var(--background-base);
+		border: 1px solid var(--border-color);
+		border-radius: var(--border-radius);
+		box-shadow: var(--box-shadow);
+		backdrop-filter: blur(24px) saturate(1.2);
+		-webkit-backdrop-filter: blur(24px) saturate(1.2);
+	}
+
+	> .tools-control__toggle {
+		width: var(--ui-button-size);
+		height: var(--ui-button-size);
+		flex: 0 0 auto;
+	}
+
+	.tools-control__body {
+		display: none;
+		flex-direction: column;
+		gap: 0.6rem;
+		padding: 0.8rem;
+		width: 22rem;
+	}
+
+	&.tools-control--expanded .tools-control__body {
+		display: flex;
+	}
+
+	.tools-control__goto {
+		display: flex;
+		align-items: stretch;
+		background-color: var(--background-light);
+		border-radius: 0.4rem;
+		overflow: hidden;
+	}
+
+	.tools-control__goto-input {
+		flex: 1 1 auto;
+		min-width: 0;
+		background: transparent;
+		color: var(--text-base);
+		border: none;
+		outline: none;
+		padding: 0.5rem 0.8rem;
+		font-size: 1.4rem;
+		font-family: 'JetBrains Mono', 'Fira Code', monospace;
+
+		&::placeholder { color: var(--text-subtle); }
+	}
+
+	.tools-control__goto-button {
+		flex: 0 0 auto;
+		width: 3.2rem;
+		border-left: 1px solid var(--border-color);
+		background-color: transparent;
+	}
+
+	.tools-control__goto--invalid {
+		animation: tools-control-shake 0.35s ease;
+		.tools-control__goto-input { color: #e74c3c; }
+	}
+
+	.tools-control__actions {
+		display: flex;
+		gap: 0.6rem;
+	}
+
+	.tools-control__action {
+		flex: 1 1 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.6rem 0.8rem;
+		background-color: var(--background-light);
+		color: var(--text-base);
+		border: 1px solid transparent;
+		border-radius: 0.4rem;
+		font-size: 1.3rem;
+		cursor: pointer;
+
+		.svg-icon {
+			width: 1.6rem;
+			height: 1.6rem;
+			position: static;
+			margin: 0;
+		}
+
+		&:hover {
+			background-color: var(--background-hover);
+			color: var(--text-hover);
+		}
+
+		&.tools-control__action--active {
+			background-color: var(--background-selected);
+			color: var(--text-selected);
+			border-color: var(--border-color);
+		}
+	}
+
+	.tools-control__measure-status {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+		padding: 0.4rem 0.2rem 0;
+		font-family: 'JetBrains Mono', 'Fira Code', monospace;
+		border-top: 1px solid var(--border-color);
+	}
+
+	.tools-control__measure-total {
+		font-size: 1.5rem;
+		font-weight: 600;
+		color: var(--text-emphasis);
+	}
+
+	.tools-control__measure-hint {
+		font-size: 1.2rem;
+		color: var(--text-subtle);
+	}
+
+	@media (max-width: 400px) {
+		.tools-control__body {
+			width: min(18rem, calc(100vw - var(--ui-button-size) * 2));
+		}
+	}
 }
 
 .map--measuring .leaflet-container {
 	cursor: crosshair;
 }
 
-.leaflet-control-goto {
-	display: flex;
-	align-items: stretch;
-	padding: 0;
-	overflow: hidden;
-
-	.leaflet-control-goto__input {
-		background: transparent;
-		color: var(--text-base);
-		border: none;
-		outline: none;
-		padding: 0 1rem;
-		width: 14rem;
-		font-size: 1.4rem;
-		font-family: 'JetBrains Mono', 'Fira Code', monospace;
-		min-width: 0;
-
-		&::placeholder {
-			color: var(--text-subtle);
-		}
-	}
-
-	.leaflet-control-goto__button {
-		flex: 0 0 auto;
-		border-left: 1px solid var(--border-color);
-	}
-
-	&.leaflet-control-goto--invalid {
-		animation: leaflet-control-goto-shake 0.35s ease;
-		.leaflet-control-goto__input {
-			color: #e74c3c;
-		}
-	}
-
-	@media (max-width: 600px) {
-		.leaflet-control-goto__input {
-			width: 11rem;
-			padding: 0 0.7rem;
-			font-size: 1.3rem;
-		}
-	}
-
-	@media (max-width: 400px) {
-		.leaflet-control-goto__input {
-			width: 8rem;
-		}
-	}
-}
-
-@keyframes leaflet-control-goto-shake {
+@keyframes tools-control-shake {
 	0%, 100% { transform: translateX(0); }
 	25%      { transform: translateX(-4px); }
 	75%      { transform: translateX(4px); }
