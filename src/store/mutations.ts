@@ -115,8 +115,6 @@ export type Mutations<S = State> = {
 	[MutationTypes.LOCAL_EDITOR_SET_COMMANDS_MODAL](state: S, open: boolean): void
 	[MutationTypes.LOCAL_EDITOR_OPEN_MENU](state: S, payload: {x: number, y: number}): void
 	[MutationTypes.LOCAL_EDITOR_CLOSE_MENU](state: S): void
-	[MutationTypes.LOCAL_EDITOR_OPEN_MARKER_MENU](state: S, payload: {x: number, y: number, setId: string, markerId: string}): void
-	[MutationTypes.LOCAL_EDITOR_CLOSE_MARKER_MENU](state: S): void
 	[MutationTypes.LOCAL_EDITOR_BEGIN_EDIT](state: S, payload: {setId: string, markerId: string, worldName: string}): void
 	[MutationTypes.LOCAL_EDITOR_QUEUE_DELETE](state: S, payload: {setId: string, markerId: string, worldName: string}): void
 	[MutationTypes.LOCAL_EDITOR_TOGGLE_DELETE](state: S, id: string): void
@@ -659,18 +657,6 @@ export const mutations: MutationTree<State> & Mutations = {
 
 	[MutationTypes.LOCAL_EDITOR_CLOSE_MENU](state: State): void {
 		state.localEditor.menu.open = false;
-	},
-
-	[MutationTypes.LOCAL_EDITOR_OPEN_MARKER_MENU](state: State, {x, y, setId, markerId}): void {
-		state.localEditor.markerMenu.x = x;
-		state.localEditor.markerMenu.y = y;
-		state.localEditor.markerMenu.setId = setId;
-		state.localEditor.markerMenu.markerId = markerId;
-		state.localEditor.markerMenu.open = true;
-	},
-
-	[MutationTypes.LOCAL_EDITOR_CLOSE_MARKER_MENU](state: State): void {
-		state.localEditor.markerMenu.open = false;
 	},
 
 	// Move a server marker into the pending list as an editable copy. If the

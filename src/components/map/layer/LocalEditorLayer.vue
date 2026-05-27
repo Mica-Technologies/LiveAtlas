@@ -64,6 +64,12 @@ const SNAP_INDICATOR_STYLE = {
 } as const;
 
 const EDITOR_PANE = 'local-editor';
+// Dedicated pane for editor interaction handles (vertex drags, segment
+// inserts, circle radius grips). Lives above EDITOR_PANE so handles draw
+// over their shapes, and forces pointer-events:auto — the default
+// tooltipPane (used briefly during early development) has
+// pointer-events:none, which caused map-drag to win over handle-drag.
+const EDITOR_HANDLE_PANE = 'local-editor-handles';
 
 // Shared SVG renderer for every pending shape. SVG uses CSS transforms
 // during pan/zoom (no per-frame redraw) — unlike the canvas renderer the
@@ -460,7 +466,11 @@ export default defineComponent({
 				draggable: true,
 				keyboard: false,
 				autoPan: false,
-				pane: 'tooltipPane',
+				pane: EDITOR_HANDLE_PANE,
+				// Mouse events must not bubble to the map — otherwise the map's
+				// drag handler grabs the same mousedown that should start the
+				// vertex drag.
+				bubblingMouseEvents: false,
 			});
 			let dragFrame = 0;
 			let lastLatLng: LatLng | null = null;
@@ -538,7 +548,7 @@ export default defineComponent({
 						iconSize: [12, 12], iconAnchor: [6, 6],
 					});
 					const handle = new Marker(latLng, {
-						icon, keyboard: false, pane: 'tooltipPane',
+						icon, keyboard: false, pane: EDITOR_HANDLE_PANE,
 						bubblingMouseEvents: false,
 					});
 					const segIdx = i;
@@ -880,6 +890,15 @@ export default defineComponent({
 			if(!props.leaflet.getPane(EDITOR_PANE)) {
 				const pane = props.leaflet.createPane(EDITOR_PANE);
 				pane.style.zIndex = '650';
+			}
+			if(!props.leaflet.getPane(EDITOR_HANDLE_PANE)) {
+				const pane = props.leaflet.createPane(EDITOR_HANDLE_PANE);
+				pane.style.zIndex = '660';
+				// Critical: default Leaflet panes near this z-index (tooltip,
+				// popup) disable pointer events. Force them back on so the
+				// handles can capture mousedown and start drags before the
+				// map-drag handler claims the event.
+				pane.style.pointerEvents = 'auto';
 			}
 			props.leaflet.addLayer(layerGroup);
 			props.leaflet.addLayer(vertexLabelGroup);

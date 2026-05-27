@@ -224,6 +224,11 @@
 		</section>
 
 		<footer class="local-editor__footer">
+			<v-btn variant="text" size="small" color="error"
+				:disabled="!hasAnythingSaved" @click="clearAll"
+				title="Discard every pending marker, set, and any data stored in this browser.">
+				Clear all saved
+			</v-btn>
 			<v-btn variant="tonal" size="small" :disabled="!markers.length" @click="persist">
 				Save to browser
 			</v-btn>
@@ -540,6 +545,26 @@ export default defineComponent({
 			store.commit(MutationTypes.LOCAL_EDITOR_SET_SHOW_VERTEX_NUMBERS, !!enabled);
 		};
 
+		// Anything worth clearing? Either there's something in-memory or the
+		// localStorage entry (left over from a previous session) is present.
+		const hasAnythingSaved = computed(() => {
+			if(markers.value.length || store.state.localEditor.sets.length) return true;
+			try {
+				return !!localStorage.getItem('liveatlas-local-editor');
+			} catch(e) {
+				return false;
+			}
+		});
+
+		const clearAll = () => {
+			const count = markers.value.length;
+			const message = count
+				? `Discard all ${count} pending marker(s), any pending sets, and the saved browser copy?`
+				: 'Discard any pending sets and the saved browser copy?';
+			if(!window.confirm(message)) return;
+			store.commit(MutationTypes.LOCAL_EDITOR_CLEAR_MARKERS, undefined);
+		};
+
 		return {
 			active,
 			markers,
@@ -556,6 +581,8 @@ export default defineComponent({
 			showVertexNumbers,
 			hoverCoords,
 			setShowVertexNumbers,
+			hasAnythingSaved,
+			clearAll,
 
 			editingId,
 			editingIdError,

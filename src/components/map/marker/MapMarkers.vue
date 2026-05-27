@@ -16,11 +16,10 @@
 
 <script lang="ts">
 import {defineComponent, computed, onMounted, watch, onUnmounted} from "vue";
-import {DomEvent, Layer, LeafletMouseEvent} from "leaflet";
+import {Layer, LeafletMouseEvent} from "leaflet";
 import {LiveAtlasAreaMarker, LiveAtlasMarker, LiveAtlasMarkerSet} from "@/index";
 import {DynmapMarkerUpdate} from "@/dynmap";
 import {useStore} from "@/store";
-import {MutationTypes} from "@/store/mutation-types";
 import {nonReactiveState} from "@/store/state";
 import LiveAtlasLayerGroup from "@/leaflet/layer/LiveAtlasLayerGroup";
 import {
@@ -47,18 +46,21 @@ export default defineComponent({
 
 		let converter = currentMap.value!.locationToLatLng.bind(currentMap.value);
 
-		// Right-click an existing server marker — when the local editor
-		// is open, surface a context menu with Edit / Queue deletion.
+		// Right-click an existing server marker — tag the event with the
+		// marker's identity so MapContextMenu (which fires next as the event
+		// bubbles to the map) can surface Edit / Queue deletion items inside
+		// the regular context menu. Two separate menus stacked on top of
+		// each other was the previous UX; this keeps everything in one place.
 		const wireContextMenu = (layer: Layer, markerId: string) => {
 			layer.on('contextmenu', (e: LeafletMouseEvent) => {
 				if(!store.state.localEditor.active) return;
-				DomEvent.stop(e);
-				store.commit(MutationTypes.LOCAL_EDITOR_OPEN_MARKER_MENU, {
-					x: e.originalEvent.clientX,
-					y: e.originalEvent.clientY,
+				// Tag the underlying DOM event (not the Leaflet wrapper) —
+				// the DOM event is preserved as the contextmenu bubbles from
+				// the marker layer up to the map handler in MapContextMenu.
+				(e.originalEvent as unknown as {_editorMarkerTarget?: object})._editorMarkerTarget = {
 					setId: props.set.id,
 					markerId,
-				});
+				};
 			});
 		};
 

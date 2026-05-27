@@ -72,8 +72,6 @@ export enum MutationTypes {
 	LOCAL_EDITOR_SET_COMMANDS_MODAL = 'localEditorSetCommandsModal',
 	LOCAL_EDITOR_OPEN_MENU = 'localEditorOpenMenu',
 	LOCAL_EDITOR_CLOSE_MENU = 'localEditorCloseMenu',
-	LOCAL_EDITOR_OPEN_MARKER_MENU = 'localEditorOpenMarkerMenu',
-	LOCAL_EDITOR_CLOSE_MARKER_MENU = 'localEditorCloseMarkerMenu',
 	LOCAL_EDITOR_BEGIN_EDIT = 'localEditorBeginEdit',
 	LOCAL_EDITOR_QUEUE_DELETE = 'localEditorQueueDelete',
 	LOCAL_EDITOR_TOGGLE_DELETE = 'localEditorToggleDelete',

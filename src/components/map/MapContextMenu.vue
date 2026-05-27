@@ -33,6 +33,28 @@
 				<v-list-item-title>{{ messageCenterHere }}</v-list-item-title>
 			</v-list-item>
 			<template v-if="editorActive">
+				<!-- Existing marker right-clicked: edit / queue deletion live
+				     at the top of the editor section. Note: still show the
+				     'Add … here' items below — the cursor is at a valid
+				     location, and a user may want to add nearby. -->
+				<template v-if="markerTarget">
+					<v-list-item v-if="markerPendingState === 'none'"
+						class="context-menu__editor-item" @click.prevent="beginEdit">
+						<v-list-item-title>Edit in local editor</v-list-item-title>
+					</v-list-item>
+					<v-list-item v-if="markerPendingState !== 'delete'"
+						class="context-menu__editor-item" @click.prevent="queueDelete">
+						<v-list-item-title>{{ markerPendingState === 'edit' ? 'Queue deletion instead' : 'Queue deletion' }}</v-list-item-title>
+					</v-list-item>
+					<v-list-item v-if="markerPendingState === 'delete'"
+						class="context-menu__editor-item" @click.prevent="toggleDelete">
+						<v-list-item-title>Cancel deletion (edit instead)</v-list-item-title>
+					</v-list-item>
+					<v-list-item v-if="markerPendingState !== 'none'"
+						class="context-menu__editor-item" @click.prevent="discardPending">
+						<v-list-item-title>Discard pending change</v-list-item-title>
+					</v-list-item>
+				</template>
 				<v-list-item class="context-menu__editor-item" @click.prevent="addLocal('point')">
 					<v-list-item-title>Add point here</v-list-item-title>
 				</v-list-item>
@@ -84,6 +106,10 @@ export default defineComponent({
 		const store = useStore(),
 			event = ref<LeafletMouseEvent | null>(null),
 			lastMouseMoveEvent = ref<LeafletMouseEvent | null>(null),
+			// The identity of the existing server marker right-clicked, if
+			// any. Set when the marker's contextmenu handler tags the event;
+			// otherwise null (i.e. the user right-clicked empty map).
+			markerTarget = ref<{setId: string, markerId: string} | null>(null),
 
 			messageCopyLink = computed(() => store.state.messages.contextMenuCopyLink),
 			messageCenterHere = computed(() => store.state.messages.contextMenuCenterHere),
@@ -178,7 +204,10 @@ export default defineComponent({
 			}
 		};
 
-		const closeContextMenu = () => event.value = null;
+		const closeContextMenu = () => {
+			event.value = null;
+			markerTarget.value = null;
+		};
 
 		const pan = () => {
 			if (event.value) {
@@ -188,6 +217,58 @@ export default defineComponent({
 		}
 
 		const editorActive = computed(() => store.state.localEditor.active);
+
+		// Whether the right-clicked existing marker is already mirrored as
+		// a pending edit/delete. Determines which sub-menu items to show.
+		const markerPendingState = computed<'none' | 'edit' | 'delete'>(() => {
+			const t = markerTarget.value;
+			if(!t) return 'none';
+			const m = store.state.localEditor.markers.find(mm =>
+				mm.id === t.markerId
+				&& (mm.originalSetId === t.setId || mm.setId === t.setId));
+			if(!m) return 'none';
+			if(m.origin === 'delete') return 'delete';
+			if(m.origin === 'edit') return 'edit';
+			return 'none';
+		});
+
+		const currentWorldName = computed(() => store.state.currentWorld?.name);
+
+		const beginEdit = () => {
+			const t = markerTarget.value;
+			if(!t || !currentWorldName.value) return;
+			store.commit(MutationTypes.LOCAL_EDITOR_BEGIN_EDIT, {
+				setId: t.setId,
+				markerId: t.markerId,
+				worldName: currentWorldName.value,
+			});
+			closeContextMenu();
+		};
+
+		const queueDelete = () => {
+			const t = markerTarget.value;
+			if(!t || !currentWorldName.value) return;
+			store.commit(MutationTypes.LOCAL_EDITOR_QUEUE_DELETE, {
+				setId: t.setId,
+				markerId: t.markerId,
+				worldName: currentWorldName.value,
+			});
+			closeContextMenu();
+		};
+
+		const toggleDelete = () => {
+			const t = markerTarget.value;
+			if(!t) return;
+			store.commit(MutationTypes.LOCAL_EDITOR_TOGGLE_DELETE, t.markerId);
+			closeContextMenu();
+		};
+
+		const discardPending = () => {
+			const t = markerTarget.value;
+			if(!t) return;
+			store.commit(MutationTypes.LOCAL_EDITOR_DISCARD_EDIT, t.markerId);
+			closeContextMenu();
+		};
 
 		const defaultSetId = computed(() => {
 			// Prefer the user's first local set if any are defined, otherwise
@@ -256,6 +337,11 @@ export default defineComponent({
 
 			e.originalEvent.stopImmediatePropagation();
 			e.originalEvent.preventDefault();
+			// If the right-click hit an existing server marker, its
+			// contextmenu handler ran first and tagged the underlying DOM
+			// event with the marker's identity (see MapMarkers.vue).
+			const tagged = (e.originalEvent as unknown as {_editorMarkerTarget?: {setId: string, markerId: string}})._editorMarkerTarget;
+			markerTarget.value = tagged ?? null;
 			event.value = e;
 		});
 
@@ -296,6 +382,13 @@ export default defineComponent({
 
 			editorActive,
 			addLocal,
+
+			markerTarget,
+			markerPendingState,
+			beginEdit,
+			queueDelete,
+			toggleDelete,
+			discardPending,
 		}
 	},
 })
