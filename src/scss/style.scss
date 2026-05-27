@@ -170,6 +170,11 @@ img {
 		margin-top: auto;
 		z-index: 1;
 		padding: 0.1rem 0.1rem 0;
+		// Soft glow + downward drop so the digits stay legible while the
+		// sun or moon is rising directly behind the text.
+		text-shadow:
+			0 0 6px rgba(0, 0, 0, 0.55),
+			0 1px 2px rgba(0, 0, 0, 0.65);
 
 		&.night {
 			color: var(--text-night);
