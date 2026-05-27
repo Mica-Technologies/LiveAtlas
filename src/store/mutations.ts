@@ -93,6 +93,7 @@ export type Mutations<S = State> = {
 	[MutationTypes.CLEAR_PARSED_URL](state: S): void
 	[MutationTypes.SET_FOLLOW_TARGET](state: S, payload: LiveAtlasPlayer): void
 	[MutationTypes.SET_VIEW_TARGET](state: S, payload: LiveAtlasMapViewTarget): void
+	[MutationTypes.PING_MARKER](state: S, payload: {setId: string; markerId: string}): void
 	[MutationTypes.CLEAR_FOLLOW_TARGET](state: S, a?: void): void
 	[MutationTypes.CLEAR_VIEW_TARGET](state: S, a?: void): void
 
@@ -528,6 +529,13 @@ export const mutations: MutationTree<State> & Mutations = {
 	[MutationTypes.SET_VIEW_TARGET](state: State, target: LiveAtlasMapViewTarget) {
 		state.followTarget = undefined;
 		state.viewTarget = target;
+	},
+
+	// Trigger a brief highlight animation on the named marker. The nonce
+	// makes the payload distinct from previous pings so re-pinging the
+	// same marker still fires the watcher in MapMarkers.
+	[MutationTypes.PING_MARKER](state: State, target: {setId: string; markerId: string}) {
+		state.pingTarget = {...target, nonce: Date.now()};
 	},
 
 	//Clear the follow target

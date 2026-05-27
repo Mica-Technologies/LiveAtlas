@@ -46,6 +46,7 @@ export enum MutationTypes {
 
 	SET_FOLLOW_TARGET = 'setFollowTarget',
 	SET_VIEW_TARGET = 'setViewTarget',
+	PING_MARKER = 'pingMarker',
 
 	CLEAR_FOLLOW_TARGET = 'clearFollow',
 	CLEAR_VIEW_TARGET = 'clearViewTarget',

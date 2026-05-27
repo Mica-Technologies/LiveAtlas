@@ -250,3 +250,23 @@
 		display: none !important;
 	}
 }
+
+// Brief highlight pulse applied when the user clicks a marker in the
+// sidebar list, so they can locate it on the map. Targets both the point
+// marker container (a div) and Leaflet's interactive SVG path elements
+// for areas / lines / circles.
+@keyframes marker-ping {
+	0%   { filter: drop-shadow(0 0 0 rgba(255, 220, 80, 0)); }
+	15%  { filter: drop-shadow(0 0 14px rgba(255, 220, 80, 1)); }
+	100% { filter: drop-shadow(0 0 0 rgba(255, 220, 80, 0)); }
+}
+
+.map .marker.marker--ping,
+.leaflet-interactive.marker--ping {
+	animation: marker-ping 1.4s ease-out;
+}
+
+.no-animations .map .marker.marker--ping,
+.no-animations .leaflet-interactive.marker--ping {
+	animation: none;
+}

@@ -20,7 +20,7 @@
 		@keydown="(e: KeyboardEvent) => e.stopImmediatePropagation()" @update:model-value="onSearchInput"
 		hide-details single-line density="compact" variant="outlined" clearable />
 	<v-list v-if="markers.size" density="compact" v-bind="$attrs" @keydown="onListKeydown">
-		<MarkerListItem v-for="[id, marker] in markers" :key="id" :marker="marker" :id="id"></MarkerListItem>
+		<MarkerListItem v-for="[id, marker] in markers" :key="id" :marker="marker" :id="id" :set-id="markerSet.id"></MarkerListItem>
 		<v-btn v-if="viewLimit < total" ref="showMoreButton" variant="text" block class="mt-1" @click.prevent="showMore">
 			{{ messageShowMore }}
 		</v-btn>

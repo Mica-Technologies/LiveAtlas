@@ -116,6 +116,7 @@ export type State = {
 
 	followTarget?: LiveAtlasPlayer;
 	viewTarget?: LiveAtlasMapViewTarget;
+	pingTarget?: { setId: string; markerId: string; nonce: number };
 
 	currentMapProvider?: Readonly<LiveAtlasMapProvider>;
 	currentServer?: LiveAtlasServerDefinition;
@@ -256,6 +257,7 @@ export const state: State = {
 
 	followTarget: undefined,
 	viewTarget: undefined,
+	pingTarget: undefined,
 
 	currentMapProvider: undefined,
 	currentServer: undefined,

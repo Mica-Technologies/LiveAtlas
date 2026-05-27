@@ -143,6 +143,22 @@ export default defineComponent({
 			}
 		});
 
+		// React to a ping request from elsewhere in the UI (e.g. the marker
+		// sidebar list). Add the highlight class to the matching layer's
+		// DOM element and remove it once the CSS animation has played. We
+		// delay the start slightly so the pan-to animation finishes first
+		// and the user actually sees the pulse.
+		watch(() => store.state.pingTarget, (target) => {
+			if(!target || target.setId !== props.set.id) return;
+			const layer = layers.get(target.markerId) as Layer & {getElement?: () => HTMLElement | SVGElement | undefined} | undefined;
+			const el = layer?.getElement?.();
+			if(!el) return;
+			window.setTimeout(() => {
+				el.classList.add('marker--ping');
+				window.setTimeout(() => el.classList.remove('marker--ping'), 1500);
+			}, 450);
+		});
+
 		watch(currentMap, (newValue, oldValue) => {
 			if(newValue && (!oldValue || oldValue.world === newValue.world)) {
 				//Prevent error if this marker set has just been removed due to the map change

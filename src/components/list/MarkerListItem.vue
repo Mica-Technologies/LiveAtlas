@@ -39,6 +39,10 @@ export default defineComponent({
 			type: String,
 			required: true,
 		},
+		setId: {
+			type: String,
+			required: true,
+		},
 		marker: {
 			type: Object as () => LiveAtlasMarker,
 			required: true
@@ -87,6 +91,7 @@ export default defineComponent({
 					}
 				});
 			}
+			store.commit(MutationTypes.PING_MARKER, {setId: props.setId, markerId: props.id});
 		}
 
 		return {
