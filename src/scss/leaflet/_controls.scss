@@ -321,6 +321,16 @@
 	cursor: crosshair;
 }
 
+// While measuring, taps that land on a marker / area / line / circle
+// should add a vertex at that location instead of opening the marker's
+// popup. Disable hit-testing on every interactive overlay (Leaflet sets
+// .leaflet-interactive on those) so the click falls through to the
+// map's own click handler — popups and tooltips live in different
+// panes and stay closeable.
+.map--measuring .leaflet-interactive {
+	pointer-events: none;
+}
+
 @keyframes popout-control-shake {
 	0%, 100% { transform: translateX(0); }
 	25%      { transform: translateX(-4px); }

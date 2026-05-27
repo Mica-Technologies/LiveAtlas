@@ -17,6 +17,7 @@ import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
 import {useStore} from "@/store";
 import {clipboardError, clipboardSuccess} from "@/util";
 import {captureMapScreenshot, downloadBlob} from "@/util/screenshot";
+import {closeOtherPopouts, registerPopout} from "@/util/popoutRegistry";
 
 export default defineComponent({
 	props: {
@@ -67,15 +68,25 @@ export default defineComponent({
 
 		const control = new LinkControl({
 			position: 'bottomleft',
-			onToggleExpanded: () => expanded.value = !expanded.value,
+			onToggleExpanded: () => {
+				expanded.value = !expanded.value;
+				if(expanded.value) closeOtherPopouts(expanded);
+			},
 			onCopyLink,
 			onSaveImage,
 		});
 
 		watch(expanded, v => control.setExpanded(v));
 
-		onMounted(() => props.leaflet.addControl(control));
-		onUnmounted(() => props.leaflet.removeControl(control));
+		let unregister: (() => void) | null = null;
+		onMounted(() => {
+			unregister = registerPopout(expanded);
+			props.leaflet.addControl(control);
+		});
+		onUnmounted(() => {
+			unregister?.();
+			props.leaflet.removeControl(control);
+		});
 	},
 
 	render() {

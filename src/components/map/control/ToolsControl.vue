@@ -16,6 +16,7 @@ import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
 import {useStore} from "@/store";
 import {MutationTypes} from "@/store/mutation-types";
 import {LiveAtlasLocation} from "@/index";
+import {closeOtherPopouts, registerPopout} from "@/util/popoutRegistry";
 
 const parseCoords = (raw: string): LiveAtlasLocation | null => {
 	const matches = raw.match(/-?\d+(?:\.\d+)?/g);
@@ -125,7 +126,10 @@ export default defineComponent({
 
 		const control = new ToolsControl({
 			position: 'bottomleft',
-			onToggleExpanded: () => expanded.value = !expanded.value,
+			onToggleExpanded: () => {
+				expanded.value = !expanded.value;
+				if(expanded.value) closeOtherPopouts(expanded);
+			},
 			onGotoSubmit: (raw) => {
 				const location = parseCoords(raw);
 				if(!location) {
@@ -141,8 +145,13 @@ export default defineComponent({
 		watch(expanded, v => control.setExpanded(v));
 		watch(measureActive, v => control.setMeasureActive(v));
 
-		onMounted(() => props.leaflet.addControl(control));
+		let unregister: (() => void) | null = null;
+		onMounted(() => {
+			unregister = registerPopout(expanded);
+			props.leaflet.addControl(control);
+		});
 		onUnmounted(() => {
+			unregister?.();
 			if(measureActive.value) stopMeasure();
 			props.leaflet.removeControl(control);
 		});
