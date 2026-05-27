@@ -85,3 +85,38 @@ export default defineComponent({
 	},
 });
 </script>
+
+<!--
+  Not scoped: v-menu teleports its overlay content to the document body, and
+  the .sidebar-context-menu class lives on the v-list inside that overlay.
+  The global .v-list override in _vuetify-overrides.scss strips the
+  background (so list-items can sit on a v-card backdrop); here we re-apply
+  the glass treatment used by MapContextMenu so the floating menu reads.
+-->
+<style lang="scss">
+	.sidebar-context-menu.v-list {
+		background-color: var(--background-base) !important;
+		backdrop-filter: blur(24px) saturate(1.2);
+		-webkit-backdrop-filter: blur(24px) saturate(1.2);
+		box-shadow: var(--box-shadow);
+		color: var(--text-base) !important;
+		border-radius: var(--border-radius) !important;
+		border: 1px solid var(--border-color);
+		padding: 0.4rem;
+
+		.v-list-item {
+			min-height: 3.6rem;
+			padding: 0 1.2rem;
+			cursor: pointer;
+			border-radius: calc(var(--border-radius) - 0.2rem);
+
+			&:hover {
+				background-color: var(--background-light);
+			}
+		}
+
+		.v-list-item-title {
+			font-size: 1.5rem;
+		}
+	}
+</style>
