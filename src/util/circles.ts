@@ -21,7 +21,7 @@ import {LatLngExpression} from "leaflet";
 import {LiveAtlasCircleMarker} from "@/index";
 import LiveAtlasPolyline from "@/leaflet/vector/LiveAtlasPolyline";
 import LiveAtlasPolygon from "@/leaflet/vector/LiveAtlasPolygon";
-import {createPopup, tooltipOptions} from "@/util/paths";
+import {createPopup, suppressTooltipWhilePopupOpen, tooltipOptions} from "@/util/paths";
 
 /**
  * Creates a {@link LiveAtlasPolygon} with the given options
@@ -34,12 +34,16 @@ export const createCircleLayer = (options: LiveAtlasCircleMarker, converter: Fun
 		points = getCirclePoints(options, converter, outline),
 		circle = outline ? new LiveAtlasPolyline(points, options) : new LiveAtlasPolygon(points, options);
 
-	if(options.popup) {
+	if (options.popup) {
 		circle.bindPopup(() => createPopup(options, 'CirclePopup'));
 	}
 
 	if (options.tooltip) {
 		circle.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
+	}
+
+	if (options.popup && options.tooltip) {
+		suppressTooltipWhilePopupOpen(circle);
 	}
 
 	return circle;
@@ -65,11 +69,15 @@ export const updateCircleLayer = (circle: LiveAtlasPolyline | LiveAtlasPolygon |
 	circle.unbindTooltip();
 
 	if (options.popup) {
-		circle.bindPopup(() => createPopup(options, 'AreaPopup'));
+		circle.bindPopup(() => createPopup(options, 'CirclePopup'));
 	}
 
 	if (options.tooltip) {
 		circle.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
+	}
+
+	if (options.popup && options.tooltip) {
+		suppressTooltipWhilePopupOpen(circle);
 	}
 
 	circle.setStyle(options.style);

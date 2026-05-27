@@ -21,7 +21,7 @@ import {LatLngExpression} from "leaflet";
 import {Coordinate, LiveAtlasAreaMarker} from "@/index";
 import LiveAtlasPolyline from "@/leaflet/vector/LiveAtlasPolyline";
 import LiveAtlasPolygon from "@/leaflet/vector/LiveAtlasPolygon";
-import {arePointsEqual, createPopup, isStyleEqual, tooltipOptions} from "@/util/paths";
+import {arePointsEqual, createPopup, isStyleEqual, suppressTooltipWhilePopupOpen, tooltipOptions} from "@/util/paths";
 
 /**
  * Creates a {@link LiveAtlasPolyline} or {@link LiveAtlasPolygon} with the given options
@@ -40,6 +40,10 @@ export const createAreaLayer = (options: LiveAtlasAreaMarker, converter: Functio
 
 	if (options.tooltip) {
 		area.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
+	}
+
+	if (options.popup && options.tooltip) {
+		suppressTooltipWhilePopupOpen(area);
 	}
 
 	return area;
@@ -84,6 +88,10 @@ export const updateAreaLayer = (area: LiveAtlasPolyline | LiveAtlasPolygon | und
 
 	if (options.tooltip) {
 		area.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
+	}
+
+	if (options.popup && options.tooltip) {
+		suppressTooltipWhilePopupOpen(area);
 	}
 
 	if(dirty) {

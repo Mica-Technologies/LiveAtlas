@@ -20,7 +20,7 @@
 import {LatLngExpression} from "leaflet";
 import {Coordinate, LiveAtlasLineMarker} from "@/index";
 import LiveAtlasPolyline from "@/leaflet/vector/LiveAtlasPolyline";
-import {createPopup, tooltipOptions} from "@/util/paths";
+import {createPopup, suppressTooltipWhilePopupOpen, tooltipOptions} from "@/util/paths";
 
 /**
  * Creates a {@link LiveAtlasPolyline} with the given options
@@ -32,12 +32,16 @@ export const createLineLayer = (options: LiveAtlasLineMarker, converter: Functio
 	const points = options.points.map(projectPointsMapCallback, converter),
 		line = new LiveAtlasPolyline(points, options);
 
-	if(options.popup) {
+	if (options.popup) {
 		line.bindPopup(() => createPopup(options, 'LinePopup'));
 	}
 
 	if (options.tooltip) {
 		line.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
+	}
+
+	if (options.popup && options.tooltip) {
+		suppressTooltipWhilePopupOpen(line);
 	}
 
 	return line;
@@ -61,11 +65,15 @@ export const updateLineLayer = (line: LiveAtlasPolyline | undefined, options: Li
 	line.unbindTooltip();
 
 	if (options.popup) {
-		line.bindPopup(() => createPopup(options, 'AreaPopup'));
+		line.bindPopup(() => createPopup(options, 'LinePopup'));
 	}
 
 	if (options.tooltip) {
 		line.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
+	}
+
+	if (options.popup && options.tooltip) {
+		suppressTooltipWhilePopupOpen(line);
 	}
 
 	line.setStyle(options.style);

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import {LeafletMouseEvent} from "leaflet";
 import {LiveAtlasPointMarker} from "@/index";
 import {GenericIcon} from "@/leaflet/icon/GenericIcon";
 import {GenericMarker} from "@/leaflet/marker/GenericMarker";
@@ -28,14 +27,9 @@ import {GenericMarker} from "@/leaflet/marker/GenericMarker";
 export const createPointLayer = (options: LiveAtlasPointMarker, converter: Function): GenericMarker => {
 	const marker = new GenericMarker(converter(options.location), options);
 
-	marker.on('click', (e: LeafletMouseEvent) => {
-		if(!e.target.getPopup() || e.target.isPopupOpen()) {
-			e.target._map.panTo(e.target.getLatLng());
-		}
-	});
-
-	if(options.popup) {
+	if (options.popup) {
 		marker.bindPopup(() => createPopup(options));
+		bindLabelSuppression(marker);
 	}
 
 	return marker;
@@ -77,8 +71,9 @@ export const updatePointLayer = (marker: GenericMarker | undefined, options: Liv
 	marker.closePopup();
 	marker.unbindPopup();
 
-	if(options.popup) {
+	if (options.popup) {
 		marker.bindPopup(() => createPopup(options));
+		bindLabelSuppression(marker);
 	}
 
 	return marker;
@@ -99,4 +94,16 @@ const createPopup = (options: LiveAtlasPointMarker) => {
 	}
 
 	return popup;
-}
+};
+
+// The point marker's inline label (rendered by GenericIcon) is shown via
+// the .marker:hover/:focus CSS rule and overlaps with the click popup if
+// both are visible. Toggle a class on the marker element so CSS can
+// suppress the label while the popup is open.
+//
+// `off` first so re-binding during updatePointLayer doesn't accumulate
+// duplicate listeners across marker updates.
+const bindLabelSuppression = (marker: GenericMarker): void => {
+	marker.off('popupopen').on('popupopen', () => marker.getElement()?.classList.add('marker--popup-open'));
+	marker.off('popupclose').on('popupclose', () => marker.getElement()?.classList.remove('marker--popup-open'));
+};

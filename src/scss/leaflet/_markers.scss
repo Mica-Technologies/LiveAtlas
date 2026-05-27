@@ -225,6 +225,13 @@
 		outline: auto;
 	}
 
+	// While a click popup is open on this marker, suppress the inline label
+	// so the two don't overlap. The hover/focus styles above would otherwise
+	// re-show it as the cursor moves through the popup.
+	&.marker--popup-open .marker__label {
+		display: none !important;
+	}
+
 	@include focus-reset {
 		z-index: auto;
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {Direction, LatLngExpression, PathOptions} from "leaflet";
+import {Direction, LatLngExpression, Layer, PathOptions} from "leaflet";
 import {LiveAtlasPathMarker} from "@/index";
 
 export const tooltipOptions = {
@@ -67,4 +67,15 @@ export const createPopup = (options: LiveAtlasPathMarker, className: string): HT
 	}
 
 	return popup;
+};
+
+// The hover tooltip and the click popup carry overlapping content, so when
+// the popup opens we hide any open tooltip on the same layer. The tooltip
+// binding stays intact and returns naturally on the next mouseover after
+// the popup closes — no rebind needed.
+//
+// `off('popupopen')` first so re-binding during updateXLayer doesn't
+// accumulate duplicate listeners across marker updates.
+export const suppressTooltipWhilePopupOpen = (layer: Layer): void => {
+	layer.off('popupopen').on('popupopen', () => layer.closeTooltip());
 };
