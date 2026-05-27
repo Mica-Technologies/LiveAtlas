@@ -121,6 +121,53 @@
 	}
 }
 
+.leaflet-control-goto {
+	display: flex;
+	align-items: stretch;
+	padding: 0;
+	overflow: hidden;
+
+	.leaflet-control-goto__input {
+		background: transparent;
+		color: var(--text-base);
+		border: none;
+		outline: none;
+		padding: 0 1rem;
+		width: 14rem;
+		font-size: 1.4rem;
+		font-family: 'JetBrains Mono', 'Fira Code', monospace;
+		min-width: 0;
+
+		&::placeholder {
+			color: var(--text-subtle);
+		}
+	}
+
+	.leaflet-control-goto__button {
+		flex: 0 0 auto;
+		border-left: 1px solid var(--border-color);
+	}
+
+	&.leaflet-control-goto--invalid {
+		animation: leaflet-control-goto-shake 0.35s ease;
+		.leaflet-control-goto__input {
+			color: #e74c3c;
+		}
+	}
+
+	@media (max-width: 480px) {
+		.leaflet-control-goto__input {
+			width: 10rem;
+		}
+	}
+}
+
+@keyframes leaflet-control-goto-shake {
+	0%, 100% { transform: translateX(0); }
+	25%      { transform: translateX(-4px); }
+	75%      { transform: translateX(4px); }
+}
+
 .leaflet-control-coordinates {
 	display: flex;
 	align-items: center;
