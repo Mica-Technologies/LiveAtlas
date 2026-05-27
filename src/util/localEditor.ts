@@ -555,6 +555,25 @@ export const extractIconUrlPrefix = (anyIconUrl: string): string | null => {
 	return match ? match[1] : null;
 };
 
+// LiveAtlas namespaces marker IDs by prepending the kind so all four
+// marker types can share one id-keyed Map (see util/dynmap.ts:
+// buildMarkers/buildAreas/buildLines/buildCircles). The server only knows
+// the marker by its raw key, so strip the prefix before we emit any
+// /dmarker update|delete command against it — and before comparing a
+// right-click tag (which still carries the prefixed key) against a
+// pending LocalEditorMarker (which stores the unprefixed key).
+export const stripLiveAtlasIdPrefix = (id: string): string =>
+	id.replace(/^(?:point|area|line|circle)_/, '');
+
+const stripKindPrefix = (id: string, kind: LiveAtlasMarkerType): string => {
+	const prefix = kind === LiveAtlasMarkerType.POINT  ? 'point_'
+		: kind === LiveAtlasMarkerType.AREA   ? 'area_'
+		: kind === LiveAtlasMarkerType.LINE   ? 'line_'
+		: kind === LiveAtlasMarkerType.CIRCLE ? 'circle_'
+		: '';
+	return prefix && id.startsWith(prefix) ? id.slice(prefix.length) : id;
+};
+
 // Reverse-map a LiveAtlas (server) marker into the editor's marker shape so
 // the user can edit it locally. The originalSetId is captured up-front so
 // later /dmarker update can target the right set even if setId is changed.
@@ -574,7 +593,7 @@ export const liveAtlasToLocalEditor = (
 	const description = stripHtml(marker.popup);
 
 	const baseFields = {
-		id: marker.id,
+		id: stripKindPrefix(marker.id, marker.type),
 		worldName,
 		setId,
 		label,

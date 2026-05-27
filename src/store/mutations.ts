@@ -52,6 +52,7 @@ import {
 	LocalEditorMarker,
 	LocalEditorSet,
 	savePersisted as savePersistedLocalEditor,
+	stripLiveAtlasIdPrefix,
 } from "@/util/localEditor";
 
 export type CurrentMapPayload = {
@@ -673,9 +674,14 @@ export const mutations: MutationTree<State> & Mutations = {
 	// Move a server marker into the pending list as an editable copy. If the
 	// marker is already pending (edit or delete), just select it and let the
 	// caller flip the origin if needed.
+	// `markerId` here arrives still prefixed (point_/area_/line_/circle_) —
+	// that's how the LiveAtlas map keys server markers. The pending list
+	// stores the unprefixed (real server) id, so we strip for the comparison
+	// but keep the prefix for the nonReactiveState lookup.
 	[MutationTypes.LOCAL_EDITOR_BEGIN_EDIT](state: State, {setId, markerId, worldName}): void {
+		const serverId = stripLiveAtlasIdPrefix(markerId);
 		const existing = state.localEditor.markers.find(m =>
-			m.id === markerId && (m.originalSetId === setId || m.setId === setId));
+			m.id === serverId && (m.originalSetId === setId || m.setId === setId));
 		if(existing) {
 			// Already pending — if it's queued for deletion, restore to edit.
 			if(existing.origin === 'delete') existing.origin = 'edit';
@@ -693,8 +699,9 @@ export const mutations: MutationTree<State> & Mutations = {
 	// Queue a deletion for a server marker. Same shape as begin-edit but
 	// the resulting pending entry has origin='delete'.
 	[MutationTypes.LOCAL_EDITOR_QUEUE_DELETE](state: State, {setId, markerId, worldName}): void {
+		const serverId = stripLiveAtlasIdPrefix(markerId);
 		const existing = state.localEditor.markers.find(m =>
-			m.id === markerId && (m.originalSetId === setId || m.setId === setId));
+			m.id === serverId && (m.originalSetId === setId || m.setId === setId));
 		if(existing) {
 			existing.origin = 'delete';
 			state.localEditor.selectedId = existing.id;

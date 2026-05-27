@@ -90,6 +90,7 @@ import {
 	startArea,
 	startCircle,
 	startLine,
+	stripLiveAtlasIdPrefix,
 } from "@/util/localEditor";
 
 export default defineComponent({
@@ -232,12 +233,15 @@ export default defineComponent({
 		const editorActive = computed(() => store.state.localEditor.active);
 
 		// Whether the right-clicked existing marker is already mirrored as
-		// a pending edit/delete. Determines which sub-menu items to show.
+		// a pending edit/delete. The tag still carries the prefixed id
+		// (matches the LiveAtlas layers map), but pending entries are
+		// stored with the unprefixed server id — strip to compare.
 		const markerPendingState = computed<'none' | 'edit' | 'delete'>(() => {
 			const t = markerTarget.value;
 			if(!t) return 'none';
+			const serverId = stripLiveAtlasIdPrefix(t.markerId);
 			const m = store.state.localEditor.markers.find(mm =>
-				mm.id === t.markerId
+				mm.id === serverId
 				&& (mm.originalSetId === t.setId || mm.setId === t.setId));
 			if(!m) return 'none';
 			if(m.origin === 'delete') return 'delete';

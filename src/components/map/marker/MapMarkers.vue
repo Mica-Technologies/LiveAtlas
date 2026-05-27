@@ -26,6 +26,7 @@ import {
 	createMarkerLayer,
 	registerSetUpdateHandler, unregisterSetUpdateHandler, updateMarkerLayer
 } from "@/util/markers";
+import {stripLiveAtlasIdPrefix} from "@/util/localEditor";
 
 export default defineComponent({
 	props: {
@@ -66,10 +67,13 @@ export default defineComponent({
 
 		// Whether the server marker is currently mirrored as an edit or
 		// delete in the local editor — when true, hide it so the editable
-		// copy stands alone.
+		// copy stands alone. The LiveAtlas map keys markers by their
+		// kind-prefixed id; pending entries store the unprefixed id, so
+		// strip before comparing.
 		const isSuppressed = (markerId: string): boolean => {
+			const serverId = stripLiveAtlasIdPrefix(markerId);
 			return store.state.localEditor.markers.some(m =>
-				m.id === markerId
+				m.id === serverId
 				&& (m.origin === 'edit' || m.origin === 'delete')
 				&& (m.originalSetId === props.set.id || m.setId === props.set.id));
 		};
