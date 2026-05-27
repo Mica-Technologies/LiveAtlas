@@ -151,6 +151,11 @@
 		color: var(--text-hover);
 	}
 
+	// Body floats to the right of the toggle (matching the Layers panel
+	// pattern) rather than upward — popping up would overlap the zoom
+	// buttons sitting in the same column, and the body's backdrop-filter
+	// would render those buttons through the panel as a ghostly outline.
+	// To the right, the body only ever sits over the map.
 	.popout-control__body {
 		display: none;
 		flex-direction: column;
@@ -158,8 +163,8 @@
 		padding: 0.8rem;
 		width: 22rem;
 		position: absolute;
-		bottom: calc(100% + var(--ui-element-spacing));
-		left: 0;
+		bottom: 0;
+		left: calc(100% + var(--ui-element-spacing));
 		background-color: var(--background-base);
 		color: var(--text-base);
 		border: 1px solid var(--border-color);
@@ -611,7 +616,11 @@
 		align-items: flex-end;
 		justify-content: flex-end;
 		gap: var(--ui-element-spacing);
-		padding-bottom: calc(var(--ui-button-size) + (var(--ui-element-spacing) * 2));
+		// Reserve enough vertical clearance for the sidebar button row that
+		// lives in this corner. The sidebar element supplies its own bottom
+		// padding already, so only one spacing on top is needed here —
+		// previously this was *2 which left a button-sized gap on mobile.
+		padding-bottom: calc(var(--ui-button-size) + var(--ui-element-spacing));
 	}
 
 	&.leaflet-center {
