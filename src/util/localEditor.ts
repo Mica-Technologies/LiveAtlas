@@ -279,25 +279,26 @@ const emitCorners = (points: Coordinate[], world: string): string[] => {
 };
 
 const emitAreaOrLine = (kind: 'area' | 'line', m: LocalEditorAreaMarker | LocalEditorLineMarker): string[] => {
-	const isUpdate = m.origin === 'edit';
-	const lines = emitCorners(m.points, m.worldName);
-	const verb = isUpdate ? `update${kind}` : `add${kind}`;
-	// For updates, label/newset go on the same command as the corner-apply,
-	// since /dmarker update<kind> reads from the corner staging buffer.
+	const lines: string[] = [];
+	// Dynmap silently ignores corner changes on /dmarker updatearea and
+	// updateline — the wiki is explicit that areas/poly-lines must be
+	// deleted and recreated to change their geometry. To keep the UX
+	// consistent (and to avoid mystery half-applied edits when only
+	// metadata changes get saved), edits always become delete + add.
+	if (m.origin === 'edit') {
+		const setForDelete = m.originalSetId || m.setId;
+		lines.push(`/dmarker delete${kind} id:${m.id} set:${setForDelete}`);
+	}
+	lines.push(...emitCorners(m.points, m.worldName));
 	const headerParts = [
-		`/dmarker ${verb}`,
+		`/dmarker add${kind}`,
 		`id:${m.id}`,
 		quoteArg(m.label || m.id),
-		`set:${lookupSet(m)}`,
+		`set:${m.setId}`,
 	];
-	const newset = newsetIfMoved(m);
-	if (newset) headerParts.push(newset);
 	lines.push(headerParts.join(' '));
 
 	const style = m.style;
-	// After the geometry/label pass above, restate the style. The setId here
-	// is the marker's CURRENT set (already migrated by the newset: above if
-	// applicable), so use m.setId directly.
 	const updateParts = [
 		`/dmarker update${kind}`,
 		`id:${m.id}`,
@@ -414,8 +415,10 @@ export const generateCommands = (
 
 		// For edits we always reset the description first so the user's edited
 		// description (including the empty case) becomes authoritative. For
-		// new markers a reset is unnecessary (no existing description).
-		if (m.origin === 'edit') {
+		// new markers a reset is unnecessary (no existing description). Area
+		// and line edits are emitted as delete+recreate (see emitAreaOrLine),
+		// so they also start fresh and don't need resetdesc.
+		if (m.origin === 'edit' && m.type !== 'area' && m.type !== 'line') {
 			lines.push(`/dmarker resetdesc id:${m.id} set:${m.setId}`);
 		}
 		if (m.description && m.description.trim()) {
