@@ -875,13 +875,19 @@ export default defineComponent({
 		});
 
 		// Attach the mousemove listener only while the user is drawing.
+		// Also flag the body so CSS can hide map tooltips during drawing:
+		// server-marker tooltips use sticky:true, so they follow the cursor
+		// and sit right under where the user is trying to click the next
+		// vertex, making placement awkward.
 		watch(drawing, (newVal, oldVal) => {
 			const willBeOn = !!newVal;
 			const wasOn = !!oldVal;
 			if(willBeOn && !wasOn) {
 				props.leaflet.on('mousemove', onMapMouseMove);
+				document.body.classList.add('local-editor-drawing');
 			} else if(!willBeOn && wasOn) {
 				props.leaflet.off('mousemove', onMapMouseMove);
+				document.body.classList.remove('local-editor-drawing');
 				if(pendingMoveFrame) {
 					cancelAnimationFrame(pendingMoveFrame);
 					pendingMoveFrame = 0;
@@ -962,6 +968,7 @@ export default defineComponent({
 			props.leaflet.off('mouseout', onHoverOut);
 			window.removeEventListener('keydown', onKeydown);
 			unregisterUpdateHandler(bumpServerMarkers);
+			document.body.classList.remove('local-editor-drawing');
 			if(pendingMoveFrame) cancelAnimationFrame(pendingMoveFrame);
 			if(hoverFrame) cancelAnimationFrame(hoverFrame);
 			layerCache.clear();
@@ -1015,6 +1022,16 @@ export default defineComponent({
 	body.local-editor-picking,
 	body.local-editor-picking .leaflet-container {
 		cursor: crosshair !important;
+	}
+
+	// While drawing a new vertex-based shape, hide all Leaflet tooltips on
+	// the map. Server-marker tooltips use sticky:true so they trail the
+	// cursor; that puts a translucent bubble exactly where the user is
+	// trying to drop the next vertex, making aiming awkward. DivIcon-based
+	// vertex labels (which live in tooltipPane but use a different class)
+	// are unaffected.
+	body.local-editor-drawing .leaflet-tooltip {
+		display: none !important;
 	}
 
 	// Drag-to-move vertex handles on the selected area/line. Filled square
