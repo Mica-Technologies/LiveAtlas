@@ -66,6 +66,16 @@
 			<v-text-field label="Label" density="compact" variant="outlined" hide-details
 				:model-value="selected.label" @update:model-value="updateField('label', $event)" />
 
+			<v-text-field label="ID" density="compact" variant="outlined"
+				:model-value="editingId" @update:model-value="onIdInput"
+				@blur="commitId" @keydown.enter.prevent="commitId"
+				:error-messages="editingIdError" :error="!!editingIdError"
+				:hide-details="!editingIdError">
+				<template v-if="idIsAuto" #append-inner>
+					<span class="local-editor__auto-badge" title="Auto-derived from label until you customize it">Auto</span>
+				</template>
+			</v-text-field>
+
 			<v-combobox label="Marker set" density="compact" variant="outlined" hide-details
 				:items="setOptions" :model-value="selected.setId"
 				@update:model-value="updateField('setId', $event)" />
@@ -189,17 +199,20 @@
 </template>
 
 <script lang="ts">
-import {computed, defineComponent} from "vue";
+import {computed, defineComponent, ref, watch} from "vue";
 import {useStore} from "@/store";
 import {MutationTypes} from "@/store/mutation-types";
 import {
+	AUTO_MARKER_ID_PATTERN,
 	DEFAULT_ICON_IDS,
+	ID_PATTERN,
 	LocalEditorAreaMarker,
 	LocalEditorCircleMarker,
 	LocalEditorLineMarker,
 	LocalEditorMarker,
 	LocalEditorPointMarker,
 	PathStyle,
+	slugifyId,
 } from "@/util/localEditor";
 import {Coordinate} from "@/index";
 import SvgIcon from "@/components/SvgIcon.vue";
@@ -273,8 +286,95 @@ export default defineComponent({
 			store.commit(MutationTypes.LOCAL_EDITOR_UPDATE_MARKER, {id: selectedId.value, patch});
 		};
 
+		// Local buffer for the ID field. We don't commit on every keystroke
+		// because the id is a primary key (layer cache, selectedId, etc.) and
+		// mid-typing intermediates would thrash those references.
+		const editingId = ref(''),
+			editingIdError = ref('');
+
+		// The id counts as "auto" if either:
+		//  - it still matches the localmarker_N pattern (never been touched), or
+		//  - it equals the slug of the current label (in sync with the label).
+		// Once the user customizes it to something else, the id stops being
+		// auto and label edits no longer rewrite it.
+		const isMarkerIdAuto = (m: LocalEditorMarker): boolean =>
+			AUTO_MARKER_ID_PATTERN.test(m.id) || m.id === slugifyId(m.label || '');
+
+		const renameMarker = (oldId: string, newId: string): void => {
+			if(oldId === newId) return;
+			// Skip mid-draw/mid-pick — in-flight handlers (vertex add, color
+			// eyedropper) still reference oldId. The auto-sync will pick up
+			// again on the next label edit once the operation finishes.
+			const d = store.state.localEditor.drawing;
+			const p = store.state.localEditor.picking;
+			if(d?.id === oldId || p?.markerId === oldId) return;
+			store.commit(MutationTypes.LOCAL_EDITOR_UPDATE_MARKER, {
+				id: oldId,
+				patch: {id: newId},
+			});
+			// Keep the selection on the same marker after the rename.
+			if(store.state.localEditor.selectedId === oldId) {
+				store.commit(MutationTypes.LOCAL_EDITOR_SELECT_MARKER, newId);
+			}
+		};
+
 		const updateField = (key: string, value: unknown) => {
+			// Special handling for label: when the current id is still auto,
+			// derive a new id from the new label and rename in lockstep.
+			if(key === 'label' && selected.value) {
+				const m = selected.value;
+				const wasAuto = isMarkerIdAuto(m);
+				commitPatch({label: value} as Partial<LocalEditorMarker>);
+				if(!wasAuto) return;
+				const slug = slugifyId(String(value ?? ''));
+				if(!slug || slug === m.id) return;
+				if(markers.value.some(mm => mm.id === slug)) return;
+				renameMarker(m.id, slug);
+				editingId.value = slug;
+				return;
+			}
 			commitPatch({[key]: value} as Partial<LocalEditorMarker>);
+		};
+
+		// Reset the local id buffer whenever the selection changes.
+		watch(() => selected.value?.id, (id) => {
+			editingId.value = id ?? '';
+			editingIdError.value = '';
+		}, {immediate: true});
+
+		const onIdInput = (value: string) => {
+			editingId.value = value;
+			editingIdError.value = '';
+		};
+
+		const idIsAuto = computed(() => {
+			const m = selected.value;
+			return !!m && isMarkerIdAuto(m);
+		});
+
+		const commitId = () => {
+			const m = selected.value;
+			if(!m) return;
+			const next = editingId.value.trim();
+			if(!next) {
+				editingIdError.value = 'ID is required';
+				editingId.value = m.id;
+				return;
+			}
+			if(next === m.id) {
+				editingIdError.value = '';
+				return;
+			}
+			if(!ID_PATTERN.test(next)) {
+				editingIdError.value = 'Use letters, numbers, _, - only';
+				return;
+			}
+			if(markers.value.some(mm => mm.id === next)) {
+				editingIdError.value = 'That ID is already used';
+				return;
+			}
+			renameMarker(m.id, next);
+			editingIdError.value = '';
 		};
 
 		const updateNumberField = (key: string, value: string | number) => {
@@ -377,6 +477,12 @@ export default defineComponent({
 			markerSummary,
 			drawing,
 			snapEnabled,
+
+			editingId,
+			editingIdError,
+			idIsAuto,
+			onIdInput,
+			commitId,
 
 			close,
 			select,
@@ -570,6 +676,20 @@ export default defineComponent({
 			border-top: 1px solid var(--border-color);
 			overflow-y: auto;
 			min-height: 0;
+		}
+
+		&__auto-badge {
+			font-size: 1rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			color: var(--text-subtle);
+			background-color: var(--background-light);
+			border: 1px solid var(--border-color);
+			border-radius: 0.2rem;
+			padding: 0.1rem 0.35rem;
+			margin-right: 0.2rem;
+			user-select: none;
 		}
 
 		&__coords {

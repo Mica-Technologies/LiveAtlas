@@ -51,20 +51,28 @@
 			</div>
 
 			<form class="local-sets__new" @submit.prevent="add">
-				<v-text-field label="New set ID" density="compact" variant="outlined" hide-details
-					v-model="newId" placeholder="e.g. landmarks"
-					:error-messages="newIdError" :error="!!newIdError" />
-				<v-btn type="submit" variant="tonal" size="small" :disabled="!newId.trim()">Add set</v-btn>
+				<v-text-field label="New set label" density="compact" variant="outlined" hide-details
+					v-model="newLabel" placeholder="e.g. Sin Island" />
+				<v-text-field label="ID" density="compact" variant="outlined" hide-details
+					v-model="newId" :placeholder="autoId || 'e.g. sin-island'"
+					:error-messages="newIdError" :error="!!newIdError"
+					@update:model-value="onIdInput">
+					<template v-if="idAutoSynced && newId" #append-inner>
+						<span class="local-sets__auto-badge" title="Auto-synced from label">Auto</span>
+					</template>
+				</v-text-field>
+				<v-btn type="submit" variant="tonal" size="small" :disabled="!effectiveId">Add set</v-btn>
 			</form>
 		</div>
 	</details>
 </template>
 
 <script lang="ts">
-import {computed, defineComponent, ref} from "vue";
+import {computed, defineComponent, ref, watch} from "vue";
 import {useStore} from "@/store";
 import {MutationTypes} from "@/store/mutation-types";
 import SvgIcon from "@/components/SvgIcon.vue";
+import {ID_PATTERN, slugifyId} from "@/util/localEditor";
 
 export default defineComponent({
 	name: 'LocalEditorSets',
@@ -73,16 +81,43 @@ export default defineComponent({
 	setup() {
 		const store = useStore(),
 			sets = computed(() => store.state.localEditor.sets),
+			newLabel = ref(''),
 			newId = ref(''),
-			newIdError = ref('');
+			newIdError = ref(''),
+			// Tracks whether the ID field has been manually edited. Once true,
+			// the ID stops auto-syncing from the label until the form resets.
+			idManuallyEdited = ref(false);
+
+		const autoId = computed(() => slugifyId(newLabel.value));
+		const effectiveId = computed(() => (newId.value.trim() || autoId.value));
+		const idAutoSynced = computed(() => !idManuallyEdited.value);
+
+		watch(newLabel, () => {
+			if(!idManuallyEdited.value) {
+				newId.value = autoId.value;
+				newIdError.value = '';
+			}
+		});
+
+		const onIdInput = (value: string) => {
+			// An empty ID field reverts to auto-sync from the label.
+			if(!value) {
+				idManuallyEdited.value = false;
+				newId.value = autoId.value;
+			} else {
+				idManuallyEdited.value = true;
+			}
+			newIdError.value = '';
+		};
 
 		const idExists = (id: string) =>
 			store.state.markerSets.has(id) || sets.value.some(s => s.id === id);
 
 		const add = () => {
-			const id = newId.value.trim();
+			const id = effectiveId.value;
+			const label = newLabel.value.trim() || id;
 			if(!id) return;
-			if(!/^[a-z0-9_-]+$/i.test(id)) {
+			if(!ID_PATTERN.test(id)) {
 				newIdError.value = 'Use letters, numbers, _, - only';
 				return;
 			}
@@ -92,13 +127,15 @@ export default defineComponent({
 			}
 			store.commit(MutationTypes.LOCAL_EDITOR_ADD_SET, {
 				id,
-				label: id,
+				label,
 				hidden: false,
 				priority: 0,
 				minZoom: undefined,
 			});
+			newLabel.value = '';
 			newId.value = '';
 			newIdError.value = '';
+			idManuallyEdited.value = false;
 		};
 
 		const update = (id: string, patch: Record<string, unknown>) => {
@@ -132,8 +169,13 @@ export default defineComponent({
 
 		return {
 			sets,
+			newLabel,
 			newId,
 			newIdError,
+			autoId,
+			effectiveId,
+			idAutoSynced,
+			onIdInput,
 			add,
 			update,
 			updateNumber,
@@ -221,8 +263,31 @@ export default defineComponent({
 
 		&__new {
 			display: flex;
+			flex-direction: column;
 			gap: 0.5rem;
-			align-items: flex-start;
+			align-items: stretch;
+			padding: 0.7rem 0.8rem;
+			background-color: var(--background-base);
+			border-radius: 0.4rem;
+			border: 1px dashed var(--border-color);
+
+			button {
+				align-self: flex-end;
+			}
+		}
+
+		&__auto-badge {
+			font-size: 1rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			color: var(--text-subtle);
+			background-color: var(--background-light);
+			border: 1px solid var(--border-color);
+			border-radius: 0.2rem;
+			padding: 0.1rem 0.35rem;
+			margin-right: 0.2rem;
+			user-select: none;
 		}
 	}
 </style>
