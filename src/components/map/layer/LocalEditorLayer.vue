@@ -15,9 +15,10 @@
   -->
 
 <script lang="ts">
-import {computed, defineComponent, onMounted, onUnmounted, watch} from "vue";
+import {computed, defineComponent, onMounted, onUnmounted, ref, watch} from "vue";
 import {CircleMarker, DivIcon, LatLng, Layer, LayerGroup, LeafletMouseEvent, Marker, Path, SVG} from "leaflet";
 import {useStore} from "@/store";
+import {nonReactiveState} from "@/store/state";
 import {MutationTypes} from "@/store/mutation-types";
 import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
 import {
@@ -29,13 +30,14 @@ import {
 	LocalEditorMarker,
 	LocalEditorPointMarker,
 	PathStyle,
+	stripLiveAtlasIdPrefix,
 } from "@/util/localEditor";
-import {Coordinate} from "@/index";
+import {Coordinate, LiveAtlasMarker} from "@/index";
 import LiveAtlasPolyline from "@/leaflet/vector/LiveAtlasPolyline";
 import LiveAtlasPolygon from "@/leaflet/vector/LiveAtlasPolygon";
 import {getCirclePoints} from "@/util/circles";
 import {LiveAtlasAreaMarker, LiveAtlasCircleMarker, LiveAtlasLineMarker} from "@/index";
-import {LiveAtlasMarkerType} from "@/util/markers";
+import {LiveAtlasMarkerType, registerUpdateHandler, unregisterUpdateHandler} from "@/util/markers";
 
 const POINT_STYLE = {
 	radius: 8,
@@ -164,11 +166,47 @@ export default defineComponent({
 		const visibleMarkersFingerprint = computed(() =>
 			visibleMarkers.value.map(m => `${m.id}=${markerSignature(m)}`).join('|'));
 
-		// Memoized snap-target list — recomputed only when the marker array
-		// or the current world changes, not on every mousemove.
+		// Bumped whenever a streaming server-marker update lands, so
+		// `snapTargets` (which reads from nonReactiveState, explicitly
+		// non-reactive) can be invalidated. state.markerSets covers the
+		// initial bulk load + add/remove of sets; this handles per-marker
+		// updates within an existing set.
+		const serverMarkersVersion = ref(0);
+		const bumpServerMarkers = () => { serverMarkersVersion.value++; };
+
 		const snapTargets = computed((): Coordinate[] => {
 			if(!currentWorld.value) return [];
-			return collectSnapTargets(markers.value, currentWorld.value.name);
+			// Touch the version ref so this computed re-runs after server
+			// marker updates land.
+			void serverMarkersVersion.value;
+
+			// Suppress server markers that are mirrored as pending edits
+			// or deletes: the local-editor copy is already a snap target
+			// from the local-markers pass, so including the server
+			// original would produce a stale duplicate.
+			const suppressed = new Set<string>();
+			for(const m of markers.value) {
+				if(m.origin !== 'edit' && m.origin !== 'delete') continue;
+				suppressed.add(`${m.originalSetId || m.setId}|${m.id}`);
+			}
+
+			const serverMarkers: LiveAtlasMarker[] = [];
+			for(const [setId, set] of store.state.markerSets) {
+				// Skip sets the user has hidden in the layer control;
+				// snapping to invisible geometry would be confusing.
+				const visibility = store.state.markerSetVisibility.get(setId);
+				const isVisible = visibility !== undefined ? visibility : !set.hidden;
+				if(!isVisible) continue;
+				const setMarkers = nonReactiveState.markers.get(setId);
+				if(!setMarkers) continue;
+				for(const [markerId, marker] of setMarkers) {
+					const unprefixed = stripLiveAtlasIdPrefix(markerId);
+					if(suppressed.has(`${setId}|${unprefixed}`)) continue;
+					serverMarkers.push(marker);
+				}
+			}
+
+			return collectSnapTargets(markers.value, currentWorld.value.name, serverMarkers);
 		});
 
 		const bindLabel = (layer: any, label: string, id: string) => {
@@ -907,6 +945,7 @@ export default defineComponent({
 			props.leaflet.on('mousemove', onHoverMove);
 			props.leaflet.on('mouseout', onHoverOut);
 			window.addEventListener('keydown', onKeydown);
+			registerUpdateHandler(bumpServerMarkers);
 			reconcile();
 			reconcileVertexLabels();
 			reconcileHandles();
@@ -922,6 +961,7 @@ export default defineComponent({
 			props.leaflet.off('mousemove', onHoverMove);
 			props.leaflet.off('mouseout', onHoverOut);
 			window.removeEventListener('keydown', onKeydown);
+			unregisterUpdateHandler(bumpServerMarkers);
 			if(pendingMoveFrame) cancelAnimationFrame(pendingMoveFrame);
 			if(hoverFrame) cancelAnimationFrame(hoverFrame);
 			layerCache.clear();

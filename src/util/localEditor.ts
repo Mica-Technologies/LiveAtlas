@@ -526,18 +526,54 @@ export const startCircle = (
 	style: defaultStyle(),
 });
 
-// Collects every "interesting" vertex from existing pending markers in the
-// given world: point markers' locations, polygon/line vertices, and circle
-// centers. Used by snapping.
-export const collectSnapTargets = (markers: LocalEditorMarker[], worldName: string): Coordinate[] => {
+// Collects every "interesting" vertex from existing markers: point/icon
+// locations, polygon/line vertices, and circle centers. Used by snapping.
+// Pulls from pending local-editor markers (filtered to the given world,
+// excluding tombstoned deletes) and, when provided, from currently-loaded
+// server markers — those are already scoped to the current world by the
+// store, so no world filter is applied to them.
+export const collectSnapTargets = (
+	markers: LocalEditorMarker[],
+	worldName: string,
+	serverMarkers?: Iterable<LiveAtlasMarker>,
+): Coordinate[] => {
 	const out: Coordinate[] = [];
 	for (const m of markers) {
 		if (m.worldName !== worldName) continue;
+		if (m.origin === 'delete') continue;
 		switch (m.type) {
 			case 'point':  out.push(m.location); break;
 			case 'circle': out.push(m.center); break;
 			case 'area':
 			case 'line':   out.push(...m.points); break;
+		}
+	}
+	if (serverMarkers) {
+		for (const m of serverMarkers) {
+			switch (m.type) {
+				case LiveAtlasMarkerType.POINT:
+				case LiveAtlasMarkerType.CIRCLE:
+					out.push(m.location);
+					break;
+				case LiveAtlasMarkerType.LINE:
+					for (const p of (m as LiveAtlasLineMarker).points) out.push(p);
+					break;
+				case LiveAtlasMarkerType.AREA: {
+					const a = m as LiveAtlasAreaMarker;
+					if (!a.points.length) break;
+					// Areas may carry either a single ring (Coordinate[]) or a
+					// multi-polygon (Coordinate[][]); snap to every vertex in
+					// either shape.
+					if (Array.isArray(a.points[0])) {
+						for (const ring of a.points as Coordinate[][]) {
+							for (const p of ring) out.push(p);
+						}
+					} else {
+						for (const p of a.points as Coordinate[]) out.push(p);
+					}
+					break;
+				}
+			}
 		}
 	}
 	return out;
