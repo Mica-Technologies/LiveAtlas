@@ -183,19 +183,21 @@ export default defineComponent({
 			padding: 0.4rem 0.5rem;
 			background-color: var(--background-light);
 			border: 1px solid transparent;
-			border-radius: 0.3rem;
+			border-radius: var(--border-radius);
 			color: inherit;
 			cursor: pointer;
 			text-align: left;
 			min-width: 0;
 
 			&:hover {
-				border-color: var(--border-color);
+				background-color: var(--background-hover);
 			}
 
-			&--selected {
-				border-color: #f6a623;
-				background-color: rgba(246, 166, 35, 0.15);
+			&--selected,
+			&--selected:hover {
+				background-color: var(--background-light);
+				outline: 2px solid var(--outline-focus);
+				outline-offset: -2px;
 			}
 		}
 

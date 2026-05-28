@@ -888,12 +888,12 @@ export default defineComponent({
 		flex-direction: column;
 		gap: 1rem;
 		padding: 1.5rem;
-		// Opaque background so we don't pay a per-frame backdrop-filter blur
-		// cost while the map is being dragged underneath. The panel is tall
-		// enough that the blur dominated drag perf with the editor open.
-		background-color: var(--background-base-solid);
+		// Match the glass surface used by the sidebar/menus/dialogs so the
+		// editor reads as part of the same UI rather than a separate widget.
+		background-color: var(--background-base);
+		backdrop-filter: blur(24px) saturate(1.2);
+		-webkit-backdrop-filter: blur(24px) saturate(1.2);
 		border: 1px solid var(--border-color);
-		border-left: 3px solid #f6a623;
 		border-radius: var(--border-radius);
 		box-shadow: var(--box-shadow);
 		color: var(--text-base);
@@ -940,9 +940,9 @@ export default defineComponent({
 		&__hint {
 			margin: 0;
 			padding: 0.8rem 1rem;
-			background-color: rgba(246, 166, 35, 0.1);
-			border-left: 2px solid #f6a623;
-			border-radius: 0.3rem;
+			background-color: var(--background-light);
+			border: 1px solid var(--border-color);
+			border-radius: var(--border-radius);
 			font-size: 1.3rem;
 			line-height: 1.4;
 			color: var(--text-subtle);
@@ -1050,14 +1050,20 @@ export default defineComponent({
 			padding: 0.6rem 1rem;
 			background-color: var(--background-light);
 			border: 1px solid transparent;
-			border-radius: 0.4rem;
+			border-radius: var(--border-radius);
 			color: inherit;
 			cursor: pointer;
 			text-align: left;
 
-			&--selected {
-				border-color: #f6a623;
-				background-color: rgba(246, 166, 35, 0.15);
+			&:hover {
+				background-color: var(--background-hover);
+			}
+
+			&--selected,
+			&--selected:hover {
+				background-color: var(--background-light);
+				outline: 2px solid var(--outline-focus);
+				outline-offset: -2px;
 			}
 
 			&--other-world {
