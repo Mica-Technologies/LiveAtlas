@@ -71,6 +71,7 @@ export type Mutations<S = State> = {
 	[MutationTypes.SET_MARKER_SETS](state: S, markerSets: Map<string, LiveAtlasMarkerSet>): void
 	[MutationTypes.SET_MARKER_SET_VISIBILITY](state: S, payload: {id: string, visible: boolean}): void
 	[MutationTypes.SET_URL_VISIBLE_LAYERS](state: S, layers: string[] | undefined): void
+	[MutationTypes.SET_ALWAYS_OPAQUE](state: S, alwaysOpaque: boolean): void
 	[MutationTypes.SET_MARKERS](state: S, markers: Map<string, Map<string, LiveAtlasMarker>>): void
 	[MutationTypes.SET_WORLD_STATE](state: S, worldState: LiveAtlasWorldState): void
 	[MutationTypes.ADD_MARKER_SET_UPDATES](state: S, updates: DynmapMarkerSetUpdate[]): void
@@ -166,6 +167,10 @@ export const mutations: MutationTree<State> & Mutations = {
 						state.ui.sidebar[element as LiveAtlasSidebarSection].collapsed = !!elementState.collapsed;
 					}
 				}
+			}
+
+			if(!isEmbedded && uiSettings && typeof uiSettings.alwaysOpaque === 'boolean') {
+				state.ui.alwaysOpaque = uiSettings.alwaysOpaque;
 			}
 		} catch(e) {
 			console.warn('Failed to load saved UI settings', e);
@@ -264,6 +269,10 @@ export const mutations: MutationTree<State> & Mutations = {
 
 	[MutationTypes.SET_URL_VISIBLE_LAYERS](state: State, layers: string[] | undefined) {
 		state.urlVisibleLayers = layers && layers.length ? layers : undefined;
+	},
+
+	[MutationTypes.SET_ALWAYS_OPAQUE](state: State, alwaysOpaque: boolean) {
+		state.ui.alwaysOpaque = !!alwaysOpaque;
 	},
 
 	//Sets the existing marker sets from the last marker fetch

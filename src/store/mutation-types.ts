@@ -68,6 +68,7 @@ export enum MutationTypes {
 
 	SET_MARKER_SET_VISIBILITY = 'setMarkerSetVisibility',
 	SET_URL_VISIBLE_LAYERS = 'setUrlVisibleLayers',
+	SET_ALWAYS_OPAQUE = 'setAlwaysOpaque',
 
 	LOCAL_EDITOR_SET_ACTIVE = 'localEditorSetActive',
 	LOCAL_EDITOR_ADD_MARKER = 'localEditorAddMarker',

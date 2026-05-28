@@ -102,6 +102,7 @@ export default defineComponent({
 			followTarget = computed(() => store.state.followTarget),
 			viewTarget = computed(() => store.state.viewTarget),
 			parsedUrl = computed(() => store.state.parsedUrl),
+			alwaysOpaque = computed(() => store.state.ui.alwaysOpaque),
 
 			//Location and zoom to pan to upon next projection change
 			scheduledView = ref<LiveAtlasMapViewTarget|null>(null),
@@ -127,6 +128,7 @@ export default defineComponent({
 			followTarget,
 			viewTarget,
 			parsedUrl,
+			alwaysOpaque,
 			mapBackground,
 
 			currentWorld,
@@ -146,6 +148,12 @@ export default defineComponent({
 				}
 			},
 			deep: true
+		},
+		alwaysOpaque: {
+			handler(newValue: boolean) {
+				document.body.classList.toggle('always-opaque', !!newValue);
+			},
+			immediate: true,
 		},
 		viewTarget: {
 			handler(newValue) {
@@ -306,6 +314,7 @@ export default defineComponent({
 	unmounted() {
 		window.removeEventListener('keydown', this.handleKeydown);
 		document.body.classList.remove('map-moving');
+		document.body.classList.remove('always-opaque');
 		this.leaflet.remove();
 	},
 

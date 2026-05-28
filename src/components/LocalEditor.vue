@@ -905,8 +905,11 @@ export default defineComponent({
 		// the backdrop-blur and use an opaque surface. The blur otherwise
 		// recomputes every frame the pixels behind it change, dominating
 		// drag perf with this tall full-height panel. Map.vue toggles the
-		// body class via Leaflet movestart/moveend.
-		body.map-moving & {
+		// body class via Leaflet movestart/moveend. body.always-opaque
+		// pins the same opaque surface on permanently (user preference
+		// via the ToolsControl popout).
+		body.map-moving &,
+		body.always-opaque & {
 			background-color: var(--background-base-solid);
 			backdrop-filter: none;
 			-webkit-backdrop-filter: none;

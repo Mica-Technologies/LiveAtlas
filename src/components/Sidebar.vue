@@ -231,8 +231,11 @@ export default defineComponent({
 
 			// Mirror the %panel placeholder's drag-time opacity swap so
 			// the round sidebar buttons (which sit on top of the map) stop
-			// paying for backdrop-blur during a drag.
-			body.map-moving & {
+			// paying for backdrop-blur during a drag. body.always-opaque
+			// pins the same opaque surface on permanently (user preference
+			// via the ToolsControl popout).
+			body.map-moving &,
+			body.always-opaque & {
 				background-color: var(--background-base-solid);
 				backdrop-filter: none;
 				-webkit-backdrop-filter: none;

@@ -9,7 +9,7 @@
   -->
 
 <script lang="ts">
-import {defineComponent, onMounted, onUnmounted, ref, watch} from "vue";
+import {computed, defineComponent, onMounted, onUnmounted, ref, watch} from "vue";
 import {LatLng, LeafletMouseEvent, Polyline, CircleMarker} from "leaflet";
 import {ToolsControl} from "@/leaflet/control/ToolsControl";
 import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
@@ -38,6 +38,7 @@ export default defineComponent({
 	setup(props) {
 		const store = useStore();
 		const expanded = ref(false);
+		const alwaysOpaque = computed(() => store.state.ui.alwaysOpaque);
 
 		const measureActive = ref(false);
 		const measurePoints: LatLng[] = [];
@@ -140,15 +141,20 @@ export default defineComponent({
 				control.clearGotoInput();
 			},
 			onMeasureToggle: () => measureActive.value ? stopMeasure() : startMeasure(),
+			onAlwaysOpaqueToggle: () =>
+				store.commit(MutationTypes.SET_ALWAYS_OPAQUE, !store.state.ui.alwaysOpaque),
 		});
 
 		watch(expanded, v => control.setExpanded(v));
 		watch(measureActive, v => control.setMeasureActive(v));
+		watch(alwaysOpaque, v => control.setAlwaysOpaque(v));
 
 		let unregister: (() => void) | null = null;
 		onMounted(() => {
 			unregister = registerPopout(expanded);
 			props.leaflet.addControl(control);
+			// Reflect the persisted preference once the DOM exists.
+			control.setAlwaysOpaque(alwaysOpaque.value);
 		});
 		onUnmounted(() => {
 			unregister?.();

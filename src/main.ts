@@ -50,11 +50,22 @@ console.info(`LiveAtlas version ${store.state.version} - https://github.com/JLyn
 
 const isEmbedded = new URLSearchParams(window.location.search).has('embedBaseUrl');
 
+// Persist the relevant uiSettings subset to localStorage. Wraps the sidebar
+// collapsed state and the always-opaque toggle so both round-trip across
+// reloads. Embedded hosts skip persistence — they're driven by query params.
+const persistUiSettings = (state: typeof store.state) => {
+	if(isEmbedded) return;
+	localStorage.setItem('uiSettings', JSON.stringify({
+		sidebar: state.ui.sidebar,
+		alwaysOpaque: state.ui.alwaysOpaque,
+	}));
+};
+
 store.subscribe((mutation, state) => {
-	if(!isEmbedded && (mutation.type === 'toggleSidebarSectionCollapsedState' || mutation.type === 'setSidebarSectionCollapsedState')) {
-		localStorage.setItem('uiSettings', JSON.stringify({
-			sidebar: state.ui.sidebar,
-		}));
+	if(mutation.type === 'toggleSidebarSectionCollapsedState'
+		|| mutation.type === 'setSidebarSectionCollapsedState'
+		|| mutation.type === MutationTypes.SET_ALWAYS_OPAQUE) {
+		persistUiSettings(state);
 	}
 
 	if(mutation.type === MutationTypes.ADD_BOOKMARK

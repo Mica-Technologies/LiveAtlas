@@ -63,8 +63,12 @@
 	// pixels behind it change). Swap to an opaque surface for the
 	// duration so the GPU only paints the panel itself, then return to
 	// the glass treatment at rest. Map.vue toggles body.map-moving from
-	// Leaflet movestart/moveend.
-	body.map-moving & {
+	// Leaflet movestart/moveend. body.always-opaque is the user
+	// preference (ToolsControl) that pins the same opaque surface on
+	// permanently — for low-end GPUs or users who find the blur
+	// distracting.
+	body.map-moving &,
+	body.always-opaque & {
 		background-color: var(--background-base-solid);
 		backdrop-filter: none;
 		-webkit-backdrop-filter: none;

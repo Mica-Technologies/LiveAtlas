@@ -14,6 +14,7 @@ export interface ToolsControlOptions extends ControlOptions {
 	onToggleExpanded: () => void;
 	onGotoSubmit: (raw: string, form: HTMLFormElement) => void;
 	onMeasureToggle: () => void;
+	onAlwaysOpaqueToggle: () => void;
 }
 
 /**
@@ -36,6 +37,7 @@ export class ToolsControl extends Control {
 	private measureStatus?: HTMLDivElement;
 	private gotoInput?: HTMLInputElement;
 	private gotoForm?: HTMLFormElement;
+	private opaqueBtn?: HTMLButtonElement;
 
 	constructor(options: ToolsControlOptions) {
 		super(options);
@@ -76,8 +78,8 @@ export class ToolsControl extends Control {
 		this.gotoInput = gotoInput;
 		this.gotoForm = gotoForm;
 
-		// Single action row: just measure now (screenshot moved to the
-		// share control's popout).
+		// Action row: measure + opaque-panels toggle (screenshot moved
+		// to the share control's popout).
 		const actions = DomUtil.create('div', 'popout-control__actions', body) as HTMLDivElement;
 		const measureBtn = DomUtil.create('button', 'popout-control__action', actions) as HTMLButtonElement;
 		measureBtn.type = 'button';
@@ -92,6 +94,20 @@ export class ToolsControl extends Control {
 			this.options.onMeasureToggle();
 		});
 		this.measureBtn = measureBtn;
+
+		const opaqueBtn = DomUtil.create('button', 'popout-control__action', actions) as HTMLButtonElement;
+		opaqueBtn.type = 'button';
+		opaqueBtn.title = 'Use opaque panels at all times (improves performance on low-end GPUs)';
+		opaqueBtn.setAttribute('aria-label', 'Always-opaque panels');
+		opaqueBtn.setAttribute('aria-pressed', 'false');
+		opaqueBtn.innerHTML = `
+			<svg class="svg-icon" aria-hidden="true"><use xlink:href="#icon--layers" /></svg>
+			<span>Opaque</span>`;
+		opaqueBtn.addEventListener('click', e => {
+			e.preventDefault();
+			this.options.onAlwaysOpaqueToggle();
+		});
+		this.opaqueBtn = opaqueBtn;
 
 		const measureStatus = DomUtil.create('div',
 			'popout-control__status', body) as HTMLDivElement;
@@ -127,6 +143,12 @@ export class ToolsControl extends Control {
 		this.measureBtn.setAttribute('aria-pressed', String(active));
 		this.measureBtn.classList.toggle('popout-control__action--active', active);
 		this.measureStatus.hidden = !active;
+	}
+
+	setAlwaysOpaque(active: boolean): void {
+		if(!this.opaqueBtn) return;
+		this.opaqueBtn.setAttribute('aria-pressed', String(active));
+		this.opaqueBtn.classList.toggle('popout-control__action--active', active);
 	}
 
 	setMeasureStatus(text: string, hint: string): void {

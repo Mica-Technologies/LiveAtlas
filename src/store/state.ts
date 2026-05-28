@@ -163,6 +163,13 @@ export type State = {
 		sidebar: {
 			[K in LiveAtlasSidebarSection]: LiveAtlasSidebarSectionState
 		};
+
+		// When true, panels use the opaque surface (--background-base-solid,
+		// no backdrop-filter) at all times instead of only during a map
+		// drag. User preference, persisted to localStorage. Useful on
+		// low-end GPUs or when the user finds the glass treatment
+		// distracting.
+		alwaysOpaque: boolean;
 	};
 
 	parsedUrl?: LiveAtlasParsedUrl;
@@ -316,6 +323,11 @@ export const state: State = {
 			maps: {},
 			markers: {},
 		},
+
+		// Default off — glass treatment applies at rest, opaque only during
+		// drag. SET_UI_CONFIGURATION reads any persisted user preference
+		// from uiSettings on app load.
+		alwaysOpaque: false,
 	},
 
 	localEditor: {
