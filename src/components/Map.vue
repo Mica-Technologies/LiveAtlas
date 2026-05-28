@@ -287,10 +287,25 @@ export default defineComponent({
 		this.leaflet.on('zoomend', () => {
 			useStore().commit(MutationTypes.SET_CURRENT_ZOOM, this.leaflet!.getZoom());
 		});
+
+		// Flag the body while the map is actively moving (drag or zoom
+		// animation) so CSS can swap translucent + backdrop-filter:blur
+		// surfaces (sidebar, local editor panel) for opaque ones. The blur
+		// recomputes on every frame the pixels behind it change, which is
+		// the dominant per-frame cost during a drag. movestart/moveend
+		// covers both pan and zoom; closes the timing gap when many quick
+		// move events fire in succession (each one resets the flag).
+		this.leaflet.on('movestart', () => {
+			document.body.classList.add('map-moving');
+		});
+		this.leaflet.on('moveend', () => {
+			document.body.classList.remove('map-moving');
+		});
 	},
 
 	unmounted() {
 		window.removeEventListener('keydown', this.handleKeydown);
+		document.body.classList.remove('map-moving');
 		this.leaflet.remove();
 	},
 

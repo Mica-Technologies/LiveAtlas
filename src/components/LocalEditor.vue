@@ -901,6 +901,17 @@ export default defineComponent({
 		overflow: hidden;
 		pointer-events: auto;
 
+		// While the map is actively moving (drag or zoom animation), drop
+		// the backdrop-blur and use an opaque surface. The blur otherwise
+		// recomputes every frame the pixels behind it change, dominating
+		// drag perf with this tall full-height panel. Map.vue toggles the
+		// body class via Leaflet movestart/moveend.
+		body.map-moving & {
+			background-color: var(--background-base-solid);
+			backdrop-filter: none;
+			-webkit-backdrop-filter: none;
+		}
+
 		&__header {
 			display: flex;
 			align-items: center;

@@ -57,4 +57,16 @@
 	backdrop-filter: blur(24px) saturate(1.2);
 	-webkit-backdrop-filter: blur(24px) saturate(1.2);
 	border: 1px solid var(--border-color);
+
+	// During a map drag or zoom animation, every translucent panel pays
+	// a backdrop-filter cost per frame (the blur recomputes whenever the
+	// pixels behind it change). Swap to an opaque surface for the
+	// duration so the GPU only paints the panel itself, then return to
+	// the glass treatment at rest. Map.vue toggles body.map-moving from
+	// Leaflet movestart/moveend.
+	body.map-moving & {
+		background-color: var(--background-base-solid);
+		backdrop-filter: none;
+		-webkit-backdrop-filter: none;
+	}
 }

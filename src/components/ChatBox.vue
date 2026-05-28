@@ -154,8 +154,8 @@
 		max-height: 20rem;
 		display: flex;
 		box-sizing: border-box;
-		backdrop-filter: blur(24px) saturate(1.2);
-		-webkit-backdrop-filter: blur(24px) saturate(1.2);
+		// backdrop-filter + border are inherited from %panel; redeclaring
+		// them here would defeat the body.map-moving opaque-swap override.
 		border: 1px solid var(--border-color);
 
 		.chat__messages {
