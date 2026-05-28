@@ -156,6 +156,30 @@ export const savePersisted = (markers: LocalEditorMarker[], sets: LocalEditorSet
 	localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 };
 
+// Encode the editor's pending markers + sets as a JSON string suitable for
+// download. Uses the same shape and version as the localStorage payload so
+// importing a file is equivalent to loading from a saved session.
+export const serializeSnapshot = (markers: LocalEditorMarker[], sets: LocalEditorSet[]): string => {
+	const data: PersistedLocalEditor = {version: STORAGE_VERSION, markers, sets};
+	return JSON.stringify(data, null, 2);
+};
+
+// Parse a raw JSON string produced by serializeSnapshot (or read from a
+// downloaded file). Returns null when the version is wrong or the shape
+// doesn't validate — both treated as user-fixable errors at the call site.
+export const parseSnapshot = (raw: string): PersistedSnapshot | null => {
+	try {
+		const parsed = JSON.parse(raw) as PersistedLocalEditor;
+		if (parsed.version !== STORAGE_VERSION || !Array.isArray(parsed.markers)) return null;
+		return {
+			markers: parsed.markers.filter(isValidMarker),
+			sets: Array.isArray(parsed.sets) ? parsed.sets.filter(isValidSet) : [],
+		};
+	} catch (e) {
+		return null;
+	}
+};
+
 export const clearPersisted = (): void => {
 	localStorage.removeItem(STORAGE_KEY);
 };

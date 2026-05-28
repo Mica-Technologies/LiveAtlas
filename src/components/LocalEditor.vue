@@ -234,18 +234,74 @@
 		</section>
 
 		<footer class="local-editor__footer">
-			<v-btn variant="text" size="small" color="error"
-				:disabled="!hasAnythingSaved" @click="clearAll"
-				title="Discard every pending marker, set, and any data stored in this browser.">
-				Clear all saved
-			</v-btn>
-			<v-btn variant="tonal" size="small" :disabled="!markers.length" @click="persist">
-				Save to browser
-			</v-btn>
-			<v-btn variant="flat" color="primary" size="small" :disabled="!markers.length" @click="showCommands">
-				Get commands…
-			</v-btn>
+			<div class="local-editor__footer-row">
+				<v-btn variant="text" size="small" color="error"
+					:disabled="!hasAnythingSaved" @click="clearAll"
+					title="Discard every pending marker, set, and any data stored in this browser.">
+					Clear all saved
+				</v-btn>
+				<v-btn variant="text" size="small" @click="triggerImport"
+					title="Load markers and sets from a previously exported file.">
+					Import…
+				</v-btn>
+				<v-btn variant="text" size="small" :disabled="!hasAnythingToExport" @click="exportSnapshot"
+					title="Download the pending markers and sets as a JSON file you can re-import later.">
+					Export
+				</v-btn>
+			</div>
+			<div class="local-editor__footer-row">
+				<v-btn variant="tonal" size="small" :disabled="!markers.length" @click="persist">
+					Save to browser
+				</v-btn>
+				<v-btn variant="flat" color="primary" size="small" :disabled="!markers.length" @click="showCommands">
+					Get commands…
+				</v-btn>
+			</div>
+			<input ref="importInputRef" type="file" accept="application/json,.json"
+				class="local-editor__import-input" @change="onImportFile" />
 		</footer>
+
+		<v-dialog v-model="importConflictsOpen" max-width="48rem">
+			<v-card class="local-editor__import-dialog">
+				<v-card-title class="local-editor__import-dialog-title">
+					Import has conflicting IDs
+				</v-card-title>
+				<v-card-text class="local-editor__import-dialog-body">
+					<p>
+						This file includes
+						<template v-if="pendingImport && pendingImport.markerConflicts.length">
+							<strong>{{ pendingImport.markerConflicts.length }}</strong> marker<template v-if="pendingImport.markerConflicts.length !== 1">s</template>
+						</template>
+						<template v-if="pendingImport && pendingImport.markerConflicts.length && pendingImport.setConflicts.length"> and </template>
+						<template v-if="pendingImport && pendingImport.setConflicts.length">
+							<strong>{{ pendingImport.setConflicts.length }}</strong> set<template v-if="pendingImport.setConflicts.length !== 1">s</template>
+						</template>
+						with IDs that already exist in your pending list.
+					</p>
+					<details v-if="pendingImport" class="local-editor__import-dialog-details">
+						<summary>Show conflicting IDs</summary>
+						<ul>
+							<li v-for="id in pendingImport.markerConflicts" :key="`m-${id}`">
+								<span class="local-editor__type-badge" data-type="point">marker</span>
+								<code>{{ id }}</code>
+							</li>
+							<li v-for="id in pendingImport.setConflicts" :key="`s-${id}`">
+								<span class="local-editor__type-badge" data-type="line">set</span>
+								<code>{{ id }}</code>
+							</li>
+						</ul>
+					</details>
+					<p class="local-editor__import-dialog-question">
+						How should those be handled? Non-conflicting items will be imported either way.
+					</p>
+				</v-card-text>
+				<v-card-actions class="local-editor__import-dialog-actions">
+					<v-btn variant="text" @click="cancelImport">Cancel import</v-btn>
+					<v-btn variant="tonal" @click="resolveImport('local')">Keep local (skip conflicts)</v-btn>
+					<v-btn variant="flat" color="primary" @click="resolveImport('imported')">Replace with imported</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
 	</aside>
 </template>
 
@@ -262,7 +318,10 @@ import {
 	LocalEditorLineMarker,
 	LocalEditorMarker,
 	LocalEditorPointMarker,
+	LocalEditorSet,
+	parseSnapshot,
 	PathStyle,
+	serializeSnapshot,
 	slugifyId,
 } from "@/util/localEditor";
 import {Coordinate} from "@/index";
@@ -605,6 +664,156 @@ export default defineComponent({
 			store.commit(MutationTypes.LOCAL_EDITOR_CLEAR_MARKERS, undefined);
 		};
 
+		// --- Import / Export ---
+		const importInputRef = ref<HTMLInputElement | null>(null);
+
+		const hasAnythingToExport = computed(() =>
+			markers.value.length > 0 || store.state.localEditor.sets.length > 0);
+
+		const exportSnapshot = () => {
+			const json = serializeSnapshot(markers.value, store.state.localEditor.sets);
+			const blob = new Blob([json], {type: 'application/json'});
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			const stamp = new Date().toISOString().slice(0, 10);
+			a.href = url;
+			a.download = `liveatlas-local-editor-${stamp}.json`;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+		};
+
+		// Snapshot held between "file parsed, conflicts detected" and
+		// "user picked a resolution". Null when no import is in flight or
+		// when the import had no conflicts (and was applied directly).
+		interface PendingImport {
+			markers: LocalEditorMarker[];
+			sets: LocalEditorSet[];
+			markerConflicts: string[];
+			setConflicts: string[];
+		}
+		const pendingImport = ref<PendingImport | null>(null);
+		const importConflictsOpen = computed({
+			get: () => pendingImport.value !== null,
+			set: (val: boolean) => { if(!val) pendingImport.value = null; },
+		});
+
+		const triggerImport = () => {
+			importInputRef.value?.click();
+		};
+
+		// Apply an import. When `mode === 'imported'`, conflicting locals are
+		// overwritten by the file's version; when `'local'`, the local entry
+		// wins (conflicting incoming items are skipped). Non-conflicting
+		// items always import.
+		const applyImport = (data: PendingImport, mode: 'imported' | 'local') => {
+			const existingMarkerIds = new Set(markers.value.map(m => m.id));
+			const existingSetIds = new Set(store.state.localEditor.sets.map(s => s.id));
+
+			const markersToAdd: LocalEditorMarker[] = [];
+			const markersToReplace: LocalEditorMarker[] = [];
+			for(const m of data.markers) {
+				if(existingMarkerIds.has(m.id)) {
+					if(mode === 'imported') markersToReplace.push(m);
+				} else {
+					markersToAdd.push(m);
+				}
+			}
+			const setsToAdd: LocalEditorSet[] = [];
+			const setsToReplace: LocalEditorSet[] = [];
+			for(const s of data.sets) {
+				if(existingSetIds.has(s.id)) {
+					if(mode === 'imported') setsToReplace.push(s);
+				} else {
+					setsToAdd.push(s);
+				}
+			}
+
+			store.commit(MutationTypes.LOCAL_EDITOR_IMPORT, {
+				markersToAdd, markersToReplace, setsToAdd, setsToReplace,
+			});
+
+			const added = markersToAdd.length + markersToReplace.length;
+			const skipped = data.markers.length - added;
+			const parts = [`Imported ${added} marker(s)`];
+			if(setsToAdd.length || setsToReplace.length) {
+				parts.push(`${setsToAdd.length + setsToReplace.length} set(s)`);
+			}
+			if(skipped > 0) parts.push(`skipped ${skipped} conflict(s)`);
+			notify({type: 'success', text: parts.join(', ')});
+		};
+
+		const resolveImport = (mode: 'imported' | 'local') => {
+			const data = pendingImport.value;
+			if(!data) return;
+			pendingImport.value = null;
+			applyImport(data, mode);
+		};
+
+		const cancelImport = () => {
+			pendingImport.value = null;
+		};
+
+		const onImportFile = async (event: Event) => {
+			const input = event.target as HTMLInputElement;
+			const file = input.files?.[0];
+			// Reset the input value so picking the same file twice still fires
+			// the change event.
+			input.value = '';
+			if(!file) return;
+
+			let raw: string;
+			try {
+				raw = await file.text();
+			} catch(e) {
+				notify({type: 'error', text: 'Could not read that file'});
+				return;
+			}
+
+			const parsed = parseSnapshot(raw);
+			if(!parsed) {
+				notify({type: 'error', text: 'That file is not a valid LiveAtlas editor export'});
+				return;
+			}
+
+			// Dedupe by id within the import so an internally-broken file
+			// doesn't surface a "conflict" against itself.
+			const seenMarkerIds = new Set<string>();
+			const uniqueMarkers = parsed.markers.filter(m => {
+				if(seenMarkerIds.has(m.id)) return false;
+				seenMarkerIds.add(m.id);
+				return true;
+			});
+			const seenSetIds = new Set<string>();
+			const uniqueSets = parsed.sets.filter(s => {
+				if(seenSetIds.has(s.id)) return false;
+				seenSetIds.add(s.id);
+				return true;
+			});
+
+			const existingMarkerIds = new Set(markers.value.map(m => m.id));
+			const existingSetIds = new Set(store.state.localEditor.sets.map(s => s.id));
+			const markerConflicts = uniqueMarkers.filter(m => existingMarkerIds.has(m.id)).map(m => m.id);
+			const setConflicts = uniqueSets.filter(s => existingSetIds.has(s.id)).map(s => s.id);
+
+			const data: PendingImport = {
+				markers: uniqueMarkers,
+				sets: uniqueSets,
+				markerConflicts,
+				setConflicts,
+			};
+
+			if(!markerConflicts.length && !setConflicts.length) {
+				// Clean import — just apply with either mode (no conflicts
+				// means the mode flag doesn't matter).
+				applyImport(data, 'imported');
+				return;
+			}
+
+			pendingImport.value = data;
+		};
+
 		return {
 			active,
 			markers,
@@ -624,6 +833,15 @@ export default defineComponent({
 			setShowVertexNumbers,
 			hasAnythingSaved,
 			clearAll,
+			hasAnythingToExport,
+			exportSnapshot,
+			triggerImport,
+			onImportFile,
+			importInputRef,
+			pendingImport,
+			importConflictsOpen,
+			resolveImport,
+			cancelImport,
 
 			editingId,
 			editingIdError,
@@ -1015,11 +1233,98 @@ export default defineComponent({
 
 		&__footer {
 			display: flex;
-			justify-content: space-between;
-			gap: 0.5rem;
+			flex-direction: column;
+			gap: 0.4rem;
 			padding-top: 0.5rem;
 			border-top: 1px solid var(--border-color);
 			flex-shrink: 0;
+		}
+
+		&__footer-row {
+			display: flex;
+			justify-content: space-between;
+			gap: 0.5rem;
+			flex-wrap: wrap;
+		}
+
+		&__import-input {
+			display: none;
+		}
+
+		&__import-dialog {
+			background-color: var(--background-base);
+			backdrop-filter: blur(24px) saturate(1.2);
+			-webkit-backdrop-filter: blur(24px) saturate(1.2);
+			border: 1px solid var(--border-color);
+			color: var(--text-base);
+		}
+
+		&__import-dialog-title {
+			font-size: 1.8rem;
+			padding: 1.5rem 2rem 0.5rem;
+		}
+
+		&__import-dialog-body {
+			display: flex;
+			flex-direction: column;
+			gap: 0.8rem;
+			padding: 1rem 2rem;
+			font-size: 1.4rem;
+			line-height: 1.4;
+			color: var(--text-base);
+
+			code {
+				font-family: monospace;
+				font-size: 1.25rem;
+				background-color: var(--background-light);
+				padding: 0.05rem 0.4rem;
+				border-radius: 0.2rem;
+			}
+		}
+
+		&__import-dialog-details {
+			background-color: var(--background-light);
+			border: 1px solid var(--border-color);
+			border-radius: 0.4rem;
+			padding: 0.5rem 0.8rem;
+
+			summary {
+				cursor: pointer;
+				font-size: 1.25rem;
+				color: var(--text-subtle);
+				user-select: none;
+			}
+
+			ul {
+				margin: 0.5rem 0 0;
+				padding: 0;
+				list-style: none;
+				display: flex;
+				flex-direction: column;
+				gap: 0.3rem;
+				max-height: 20rem;
+				overflow-y: auto;
+			}
+
+			li {
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+				font-size: 1.25rem;
+			}
+		}
+
+		&__import-dialog-question {
+			margin: 0;
+			color: var(--text-subtle);
+			font-size: 1.3rem;
+		}
+
+		&__import-dialog-actions {
+			padding: 0.5rem 2rem 1.5rem;
+			gap: 0.5rem;
+			justify-content: flex-end;
+			flex-wrap: wrap;
 		}
 
 		@media (max-width: 600px) {

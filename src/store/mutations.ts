@@ -137,6 +137,12 @@ export type Mutations<S = State> = {
 	[MutationTypes.LOCAL_EDITOR_ADD_SET](state: S, set: LocalEditorSet): void
 	[MutationTypes.LOCAL_EDITOR_UPDATE_SET](state: S, payload: {id: string, patch: Partial<LocalEditorSet>}): void
 	[MutationTypes.LOCAL_EDITOR_DELETE_SET](state: S, id: string): void
+	[MutationTypes.LOCAL_EDITOR_IMPORT](state: S, payload: {
+		markersToAdd: LocalEditorMarker[],
+		markersToReplace: LocalEditorMarker[],
+		setsToAdd: LocalEditorSet[],
+		setsToReplace: LocalEditorSet[],
+	}): void
 
 	[MutationTypes.RESET](state: S): void
 }
@@ -806,6 +812,28 @@ export const mutations: MutationTree<State> & Mutations = {
 	[MutationTypes.LOCAL_EDITOR_DELETE_SET](state: State, id: string): void {
 		const index = state.localEditor.sets.findIndex(s => s.id === id);
 		if(index !== -1) state.localEditor.sets.splice(index, 1);
+	},
+
+	// Apply an import payload. Caller has already resolved conflicts:
+	// `markersToReplace` overwrites an existing pending entry by id,
+	// `markersToAdd` is appended. Same model for sets.
+	[MutationTypes.LOCAL_EDITOR_IMPORT](state: State, {markersToAdd, markersToReplace, setsToAdd, setsToReplace}): void {
+		for(const m of markersToReplace) {
+			const idx = state.localEditor.markers.findIndex(x => x.id === m.id);
+			if(idx !== -1) state.localEditor.markers.splice(idx, 1, m);
+			else state.localEditor.markers.push(m);
+		}
+		for(const m of markersToAdd) {
+			state.localEditor.markers.push(m);
+		}
+		for(const s of setsToReplace) {
+			const idx = state.localEditor.sets.findIndex(x => x.id === s.id);
+			if(idx !== -1) state.localEditor.sets.splice(idx, 1, s);
+			else state.localEditor.sets.push(s);
+		}
+		for(const s of setsToAdd) {
+			state.localEditor.sets.push(s);
+		}
 	},
 
 	//Cleanup for switching servers or reloading the configuration

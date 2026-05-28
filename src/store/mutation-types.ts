@@ -94,6 +94,7 @@ export enum MutationTypes {
 	LOCAL_EDITOR_ADD_SET = 'localEditorAddSet',
 	LOCAL_EDITOR_UPDATE_SET = 'localEditorUpdateSet',
 	LOCAL_EDITOR_DELETE_SET = 'localEditorDeleteSet',
+	LOCAL_EDITOR_IMPORT = 'localEditorImport',
 
 	RESET = 'reset'
 }
