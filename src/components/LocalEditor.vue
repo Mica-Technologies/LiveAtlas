@@ -1279,6 +1279,12 @@ export default defineComponent({
 			-webkit-backdrop-filter: blur(8px) saturate(1.2);
 			border: 1px solid var(--border-color);
 			color: var(--text-base);
+
+			body.always-opaque & {
+				background-color: var(--background-base-solid);
+				backdrop-filter: none;
+				-webkit-backdrop-filter: none;
+			}
 		}
 
 		&__import-dialog-title {

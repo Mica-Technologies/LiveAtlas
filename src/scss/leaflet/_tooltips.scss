@@ -22,6 +22,10 @@
 	border: none;
 	will-change: transform;
 
+	body.always-opaque & {
+		background-color: var(--background-base-solid);
+	}
+
 	&:before {
 		content: none;
 	}

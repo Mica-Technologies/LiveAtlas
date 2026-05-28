@@ -482,6 +482,12 @@ export default defineComponent({
 			padding: 0.4rem;
 		}
 
+		body.always-opaque & .context-menu__list {
+			background-color: var(--background-base-solid) !important;
+			backdrop-filter: none;
+			-webkit-backdrop-filter: none;
+		}
+
 		:deep(.v-list-item) {
 			min-height: 3.6rem;
 			padding: 0 1.2rem;

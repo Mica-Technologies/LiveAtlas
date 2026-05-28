@@ -104,6 +104,12 @@ export default defineComponent({
 		border: 1px solid var(--border-color);
 		padding: 0.4rem;
 
+		body.always-opaque & {
+			background-color: var(--background-base-solid) !important;
+			backdrop-filter: none;
+			-webkit-backdrop-filter: none;
+		}
+
 		.v-list-item {
 			min-height: 3.6rem;
 			padding: 0 1.2rem;

@@ -12,6 +12,12 @@
 	color: var(--text-base) !important;
 }
 
+body.always-opaque .v-card {
+	background-color: var(--background-base-solid) !important;
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
+}
+
 .v-dialog > .v-overlay__content > .v-card {
 	border-radius: var(--border-radius) !important;
 }

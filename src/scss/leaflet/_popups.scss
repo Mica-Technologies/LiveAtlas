@@ -21,6 +21,12 @@
 		box-shadow: var(--box-shadow);
 	}
 
+	body.always-opaque & {
+		.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+			background-color: var(--background-base-solid);
+		}
+	}
+
 	.leaflet-popup-content-wrapper {
 		max-height: 50vh;
 		display: flex;

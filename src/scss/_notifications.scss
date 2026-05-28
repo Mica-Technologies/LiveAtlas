@@ -36,6 +36,12 @@
 		border: 1px solid var(--border-color);
 		border-left: none;
 
+		body.always-opaque & {
+			background: var(--background-base-solid);
+			backdrop-filter: none;
+			-webkit-backdrop-filter: none;
+		}
+
 		&.success {
 			background: hsla(120, 44%, 40%, 0.85);
 			border-left-color: hsl(120, 44%, 30%);

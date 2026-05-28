@@ -84,6 +84,12 @@ export default defineComponent({
 	-webkit-backdrop-filter: blur(8px) saturate(1.2);
 	border: 1px solid var(--border-color);
 
+	body.always-opaque & {
+		background-color: var(--background-base-solid);
+		backdrop-filter: none;
+		-webkit-backdrop-filter: none;
+	}
+
 	.login-dialog__header {
 		text-align: center;
 		position: relative;
