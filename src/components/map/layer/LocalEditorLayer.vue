@@ -746,13 +746,65 @@ export default defineComponent({
 			});
 		};
 
+		// Double-click finishes an area/line drawing. Leaflet fires 
+		// before , so the second click already added a duplicate
+		// vertex at this spot — pop it before finishing so the user doesn't
+		// end up with an extra point. doubleClickZoom is disabled in the
+		// drawing watcher so the map doesn't zoom in alongside us.
+		const onMapDblClick = () => {
+			const d = drawing.value;
+			if(!d || (d.kind !== 'area' && d.kind !== 'line')) return;
+			const marker = markers.value.find(m => m.id === d.id);
+			if(marker && (marker.type === 'area' || marker.type === 'line') && marker.points.length > 0) {
+				store.commit(MutationTypes.LOCAL_EDITOR_UPDATE_MARKER, {
+					id: d.id,
+					patch: {points: marker.points.slice(0, -1)},
+				});
+			}
+			store.commit(MutationTypes.LOCAL_EDITOR_FINISH_DRAWING, undefined);
+		};
+
+		// Remove the most recently placed vertex from the in-progress
+		// area/line. If this would empty the shape, drop the whole marker
+		// and exit drawing mode so the user isn't left with a zero-vertex
+		// pending entry.
+		const undoLastVertex = () => {
+			const d = drawing.value;
+			if(!d || (d.kind !== 'area' && d.kind !== 'line')) return;
+			const marker = markers.value.find(m => m.id === d.id);
+			if(!marker || (marker.type !== 'area' && marker.type !== 'line')) return;
+			if(marker.points.length <= 1) {
+				store.commit(MutationTypes.LOCAL_EDITOR_DELETE_MARKER, d.id);
+				store.commit(MutationTypes.LOCAL_EDITOR_FINISH_DRAWING, undefined);
+				return;
+			}
+			store.commit(MutationTypes.LOCAL_EDITOR_UPDATE_MARKER, {
+				id: d.id,
+				patch: {points: marker.points.slice(0, -1)},
+			});
+		};
+
 		const onKeydown = (e: KeyboardEvent) => {
+			// Ignore key events that originated inside an editable field — the
+			// editor panel has form inputs, and Backspace/Enter there must do
+			// their native thing.
+			const t = e.target as HTMLElement | null;
+			if(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
 			if(e.key === 'Escape') {
 				if(picking.value) {
 					store.commit(MutationTypes.LOCAL_EDITOR_FINISH_PICKING, undefined);
 				} else if(drawing.value) {
 					store.commit(MutationTypes.LOCAL_EDITOR_FINISH_DRAWING, undefined);
 				}
+				return;
+			}
+			if(!drawing.value) return;
+			if(e.key === 'Enter') {
+				e.preventDefault();
+				store.commit(MutationTypes.LOCAL_EDITOR_FINISH_DRAWING, undefined);
+			} else if(e.key === 'Backspace') {
+				e.preventDefault();
+				undoLastVertex();
 			}
 		};
 
@@ -874,20 +926,28 @@ export default defineComponent({
 			}
 		});
 
+		// Stash the doubleClickZoom state on draw-enter so we can restore
+		// it on draw-exit, in case the user had it disabled before drawing.
+		let wasDoubleClickZoomEnabled = false;
+
 		// Attach the mousemove listener only while the user is drawing.
 		// Also flag the body so CSS can hide map tooltips during drawing:
 		// server-marker tooltips use sticky:true, so they follow the cursor
 		// and sit right under where the user is trying to click the next
-		// vertex, making placement awkward.
+		// vertex, making placement awkward. doubleClickZoom is silenced so
+		// the dblclick-to-finish gesture doesn't also zoom the map.
 		watch(drawing, (newVal, oldVal) => {
 			const willBeOn = !!newVal;
 			const wasOn = !!oldVal;
 			if(willBeOn && !wasOn) {
 				props.leaflet.on('mousemove', onMapMouseMove);
 				document.body.classList.add('local-editor-drawing');
+				wasDoubleClickZoomEnabled = props.leaflet.doubleClickZoom.enabled();
+				if(wasDoubleClickZoomEnabled) props.leaflet.doubleClickZoom.disable();
 			} else if(!willBeOn && wasOn) {
 				props.leaflet.off('mousemove', onMapMouseMove);
 				document.body.classList.remove('local-editor-drawing');
+				if(wasDoubleClickZoomEnabled) props.leaflet.doubleClickZoom.enable();
 				if(pendingMoveFrame) {
 					cancelAnimationFrame(pendingMoveFrame);
 					pendingMoveFrame = 0;
@@ -948,6 +1008,7 @@ export default defineComponent({
 			props.leaflet.addLayer(vertexLabelGroup);
 			props.leaflet.addLayer(handleGroup);
 			props.leaflet.on('click', onMapClick);
+			props.leaflet.on('dblclick', onMapDblClick);
 			props.leaflet.on('mousemove', onHoverMove);
 			props.leaflet.on('mouseout', onHoverOut);
 			window.addEventListener('keydown', onKeydown);
@@ -963,6 +1024,7 @@ export default defineComponent({
 			props.leaflet.removeLayer(vertexLabelGroup);
 			props.leaflet.removeLayer(handleGroup);
 			props.leaflet.off('click', onMapClick);
+			props.leaflet.off('dblclick', onMapDblClick);
 			props.leaflet.off('mousemove', onMapMouseMove);
 			props.leaflet.off('mousemove', onHoverMove);
 			props.leaflet.off('mouseout', onHoverOut);

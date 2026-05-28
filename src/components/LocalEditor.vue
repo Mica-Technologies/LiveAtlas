@@ -32,10 +32,19 @@
 			<span class="local-editor__drawing-status">
 				<span class="local-editor__drawing-pulse"></span>
 				<template v-if="drawing.kind === 'circle-radius'">
-					Click on the map to set the circle radius
+					<span>Click on the map to set the circle radius</span>
 				</template>
 				<template v-else>
-					Click to add a vertex (Shift to skip snap)
+					<span class="local-editor__drawing-line">
+						<strong>{{ drawingVertexCount }}</strong> vertex<template v-if="drawingVertexCount !== 1">es</template> placed &middot;
+						click to add another
+					</span>
+					<span class="local-editor__drawing-hints">
+						<kbd>Enter</kbd> or double-click to finish &middot;
+						<kbd>Backspace</kbd> to undo &middot;
+						<kbd>Shift</kbd> to skip snap &middot;
+						<kbd>Esc</kbd> to cancel
+					</span>
 				</template>
 			</span>
 			<v-btn variant="flat" color="primary" size="small" @click="finishDrawing">Finish</v-btn>
@@ -62,6 +71,7 @@
 		<section class="local-editor__list" aria-label="Pending markers">
 			<div v-if="!markers.length" class="local-editor__empty">No pending markers yet.</div>
 			<button v-for="marker in markers" :key="marker.id" type="button"
+				:ref="el => registerItemRef(marker.id, el as HTMLElement | null)"
 				class="local-editor__list-item"
 				:class="{ 'local-editor__list-item--selected': marker.id === selectedId,
 					'local-editor__list-item--other-world': marker.worldName !== currentWorldName,
@@ -240,7 +250,7 @@
 </template>
 
 <script lang="ts">
-import {computed, defineComponent, ref, watch} from "vue";
+import {computed, defineComponent, nextTick, ref, watch} from "vue";
 import {useStore} from "@/store";
 import {MutationTypes} from "@/store/mutation-types";
 import {
@@ -301,6 +311,16 @@ export default defineComponent({
 			return `${Math.round(l.x)}, ${Math.round(l.y)}, ${Math.round(l.z)}`;
 		});
 
+		// Vertex count for the drawing-bar's progress label. 0 for circle
+		// (which has its own copy) and for any unexpected marker shape.
+		const drawingVertexCount = computed((): number => {
+			const d = drawing.value;
+			if(!d || (d.kind !== 'area' && d.kind !== 'line')) return 0;
+			const m = markers.value.find(mm => mm.id === d.id);
+			if(!m || (m.type !== 'area' && m.type !== 'line')) return 0;
+			return m.points.length;
+		});
+
 		const setOptions = computed(() => {
 			const opts = new Set<string>();
 			markerSets.value.forEach((_set, id) => opts.add(id));
@@ -331,6 +351,26 @@ export default defineComponent({
 
 		const close = () => store.commit(MutationTypes.LOCAL_EDITOR_SET_ACTIVE, false);
 		const select = (id: string) => store.commit(MutationTypes.LOCAL_EDITOR_SELECT_MARKER, id);
+
+		// Per-marker refs to the pending-list buttons so we can scroll the
+		// selected one into view (useful when selection is driven by a click
+		// on the map rather than the list itself).
+		const itemRefs = new Map<string, HTMLElement>();
+		const registerItemRef = (id: string, el: HTMLElement | null) => {
+			if(el) itemRefs.set(id, el);
+			else itemRefs.delete(id);
+		};
+
+		watch(selectedId, (id) => {
+			if(!id) return;
+			// Wait for the v-for to settle on the next tick before reading
+			// the ref — selection often changes in the same tick the marker
+			// is added.
+			nextTick(() => {
+				const el = itemRefs.get(id);
+				if(el) el.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+			});
+		});
 
 		const commitPatch = (patch: Partial<LocalEditorMarker>) => {
 			if(!selectedId.value) return;
@@ -577,6 +617,7 @@ export default defineComponent({
 			minVertices,
 			markerSummary,
 			drawing,
+			drawingVertexCount,
 			snapEnabled,
 			showVertexNumbers,
 			hoverCoords,
@@ -596,6 +637,7 @@ export default defineComponent({
 
 			close,
 			select,
+			registerItemRef,
 			updateField,
 			updateNumberField,
 			updateLocation,
@@ -706,9 +748,44 @@ export default defineComponent({
 
 		&__drawing-status {
 			display: flex;
-			align-items: center;
+			align-items: flex-start;
 			gap: 0.6rem;
+			flex-wrap: wrap;
+			min-width: 0;
+			flex: 1 1 auto;
 			color: var(--text-base);
+		}
+
+		&__drawing-line {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.4rem;
+			line-height: 1.3;
+		}
+
+		&__drawing-hints {
+			flex-basis: 100%;
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 0.3rem;
+			font-size: 1.15rem;
+			color: var(--text-subtle);
+			line-height: 1.4;
+			padding-left: 1.6rem;
+
+			kbd {
+				display: inline-block;
+				padding: 0.05rem 0.45rem;
+				background-color: var(--background-base);
+				border: 1px solid var(--border-color);
+				border-bottom-width: 2px;
+				border-radius: 0.3rem;
+				font-family: monospace;
+				font-size: 1.05rem;
+				line-height: 1.3;
+				color: var(--text-base);
+			}
 		}
 
 		&__drawing-pulse {
