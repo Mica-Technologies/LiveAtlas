@@ -351,12 +351,41 @@ export const mutations: MutationTree<State> & Mutations = {
 
 	//Adds tile updates from an update fetch to the pending updates list
 	[MutationTypes.ADD_TILE_UPDATES](state: State, updates: Array<DynmapTileUpdate>) {
-		state.pendingTileUpdates = state.pendingTileUpdates.concat(updates);
+		// Dedupe by tile name as we merge: when several updates target
+		// the same tile, only the newest timestamp matters (an older
+		// update would be immediately overwritten by the newer one on
+		// the consumer side). Bounds the queue by the number of unique
+		// affected tiles rather than the raw update count, which can
+		// flood when a big region re-renders server-side.
+		//
+		// Map preserves insertion order even when set() overwrites an
+		// existing key, so the consumer's FIFO slice still pops oldest
+		// updates first.
+		const byName = new Map<string, DynmapTileUpdate>();
+		for(const existing of state.pendingTileUpdates) {
+			byName.set(existing.name, existing);
+		}
+		for(const update of updates) {
+			const prior = byName.get(update.name);
+			if(!prior || update.timestamp >= prior.timestamp) {
+				byName.set(update.name, update);
+			}
+		}
+		state.pendingTileUpdates = Array.from(byName.values());
 	},
 
 	//Adds chat messages from an update fetch to the chat history
 	[MutationTypes.ADD_CHAT](state: State, chat: Array<LiveAtlasChat>) {
 		state.chat.messages.unshift(...chat);
+		// Bound the in-memory history so a long-running session on a busy
+		// server doesn't grow this array forever. The display layer slices
+		// further down to the configured scrollback (ChatBox.vue), and the
+		// chat-balloon walk in PlayerMarker uses a per-player cutoff, so
+		// 500 is generous for both.
+		const CHAT_HISTORY_MAX = 500;
+		if(state.chat.messages.length > CHAT_HISTORY_MAX) {
+			state.chat.messages.length = CHAT_HISTORY_MAX;
+		}
 	},
 
 	//Pops the specified number of marker updates from the pending updates list
