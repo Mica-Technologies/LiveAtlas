@@ -117,10 +117,16 @@ export class DynmapTileLayer extends LiveAtlasTileLayer {
 
 			tile = this._tiles[i];
 
-			if (tile.coords.z !== this._tileZoom) {
-				if (tile.loaded && tile.el && tile.el.tileName) {
-					this._namedTiles.delete(tile.el.tileName);
-				}
+			// Drop _namedTiles for any different-zoom tile here, loaded or
+			// not. super._abortLoading deletes incomplete tiles from
+			// this._tiles directly, bypassing our _removeTile override —
+			// so without this cleanup their _namedTiles entry orphans
+			// (holding a reference to a now-detached <img>). Loaded
+			// different-zoom tiles still get removed via _removeTile
+			// during the subsequent pruning pass, so deleting them here
+			// is just redundant, not wrong.
+			if (tile.coords.z !== this._tileZoom && tile.el && tile.el.tileName) {
+				this._namedTiles.delete(tile.el.tileName);
 			}
 		}
 
