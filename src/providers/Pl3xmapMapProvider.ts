@@ -550,9 +550,25 @@ export default class Pl3xmapMapProvider extends MapProvider {
 
 	startUpdates() {
 		this.updatesEnabled = true;
+		document.addEventListener('visibilitychange', this.onVisibilityChange);
 		this.updatePlayers();
 		this.updateMarkers();
 	}
+
+	// When the tab is hidden, stretch the poll interval by 5x — there's
+	// nobody watching, so a stale view costs nothing. On return-to-visible
+	// the visibilitychange handler cancels the long-delay timer and kicks
+	// an immediate update so the user doesn't see a stale snapshot.
+	private static readonly HIDDEN_TAB_POLL_MULTIPLIER = 5;
+
+	private onVisibilityChange = () => {
+		if(document.hidden || !this.updatesEnabled) return;
+		if(this.playerUpdateTimeout) {
+			clearTimeout(this.playerUpdateTimeout);
+			this.playerUpdateTimeout = null;
+			this.updatePlayers();
+		}
+	};
 
 	private async updatePlayers() {
 		try {
@@ -569,7 +585,10 @@ export default class Pl3xmapMapProvider extends MapProvider {
 					clearTimeout(this.playerUpdateTimeout);
 				}
 
-				this.playerUpdateTimeout = setTimeout(() => this.updatePlayers(), this.playerUpdateInterval);
+				const delay = document.hidden
+					? this.playerUpdateInterval * Pl3xmapMapProvider.HIDDEN_TAB_POLL_MULTIPLIER
+					: this.playerUpdateInterval;
+				this.playerUpdateTimeout = setTimeout(() => this.updatePlayers(), delay);
 			}
 		}
 	}
@@ -580,6 +599,7 @@ export default class Pl3xmapMapProvider extends MapProvider {
 
 	stopUpdates() {
 		this.updatesEnabled = false;
+		document.removeEventListener('visibilitychange', this.onVisibilityChange);
 
 		if (this.markerUpdateTimeout) {
 			clearTimeout(this.markerUpdateTimeout);

@@ -259,8 +259,23 @@ export default class DynmapMapProvider extends MapProvider {
 
 	startUpdates() {
 		this.updatesEnabled = true;
+		document.addEventListener('visibilitychange', this.onVisibilityChange);
 		this.update();
 	}
+
+	// When the tab is hidden, stretch the poll interval by 5x — there's
+	// nobody watching, so a stale view costs nothing. On return-to-visible
+	// the visibilitychange handler cancels the long-delay timer and kicks
+	// an immediate update so the user doesn't see a stale snapshot.
+	private static readonly HIDDEN_TAB_POLL_MULTIPLIER = 5;
+
+	private onVisibilityChange = () => {
+		if(!document.hidden && this.updatesEnabled && this.updateTimeout) {
+			clearTimeout(this.updateTimeout);
+			this.updateTimeout = null;
+			this.update();
+		}
+	};
 
 	private async update() {
 		try {
@@ -271,13 +286,17 @@ export default class DynmapMapProvider extends MapProvider {
 					clearTimeout(this.updateTimeout);
 				}
 
-				this.updateTimeout = setTimeout(() => this.update(), this.updateInterval);
+				const delay = document.hidden
+					? this.updateInterval * DynmapMapProvider.HIDDEN_TAB_POLL_MULTIPLIER
+					: this.updateInterval;
+				this.updateTimeout = setTimeout(() => this.update(), delay);
 			}
 		}
 	}
 
 	stopUpdates() {
 		this.updatesEnabled = false;
+		document.removeEventListener('visibilitychange', this.onVisibilityChange);
 
 		if (this.updateTimeout) {
 			clearTimeout(this.updateTimeout);
