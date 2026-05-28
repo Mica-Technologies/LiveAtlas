@@ -6,8 +6,8 @@
 
 .v-card {
 	background-color: var(--background-base) !important;
-	backdrop-filter: blur(24px) saturate(1.2);
-	-webkit-backdrop-filter: blur(24px) saturate(1.2);
+	backdrop-filter: blur(8px) saturate(1.2);
+	-webkit-backdrop-filter: blur(8px) saturate(1.2);
 	border: 1px solid var(--border-color) !important;
 	color: var(--text-base) !important;
 }

@@ -154,8 +154,8 @@ export default defineComponent({
 		flex-direction: column;
 		gap: 0.6rem;
 		background-color: var(--background-base);
-		backdrop-filter: blur(24px) saturate(1.2);
-		-webkit-backdrop-filter: blur(24px) saturate(1.2);
+		backdrop-filter: blur(8px) saturate(1.2);
+		-webkit-backdrop-filter: blur(8px) saturate(1.2);
 		border: 1px solid var(--border-color);
 		color: var(--text-base);
 

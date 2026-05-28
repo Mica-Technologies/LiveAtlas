@@ -221,8 +221,8 @@ export default defineComponent({
 			width: var(--ui-button-size);
 			height: var(--ui-button-size);
 			box-shadow: var(--box-shadow);
-			backdrop-filter: blur(24px) saturate(1.2);
-			-webkit-backdrop-filter: blur(24px) saturate(1.2);
+			backdrop-filter: blur(8px) saturate(1.2);
+			-webkit-backdrop-filter: blur(8px) saturate(1.2);
 			border: 1px solid var(--border-color);
 
 			& + button {

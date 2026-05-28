@@ -891,8 +891,8 @@ export default defineComponent({
 		// Match the glass surface used by the sidebar/menus/dialogs so the
 		// editor reads as part of the same UI rather than a separate widget.
 		background-color: var(--background-base);
-		backdrop-filter: blur(24px) saturate(1.2);
-		-webkit-backdrop-filter: blur(24px) saturate(1.2);
+		backdrop-filter: blur(8px) saturate(1.2);
+		-webkit-backdrop-filter: blur(8px) saturate(1.2);
 		border: 1px solid var(--border-color);
 		border-radius: var(--border-radius);
 		box-shadow: var(--box-shadow);
@@ -1272,8 +1272,8 @@ export default defineComponent({
 
 		&__import-dialog {
 			background-color: var(--background-base);
-			backdrop-filter: blur(24px) saturate(1.2);
-			-webkit-backdrop-filter: blur(24px) saturate(1.2);
+			backdrop-filter: blur(8px) saturate(1.2);
+			-webkit-backdrop-filter: blur(8px) saturate(1.2);
 			border: 1px solid var(--border-color);
 			color: var(--text-base);
 		}

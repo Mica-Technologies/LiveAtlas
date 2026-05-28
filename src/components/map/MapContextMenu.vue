@@ -473,8 +473,8 @@ export default defineComponent({
 
 		.context-menu__list {
 			background-color: var(--background-base) !important;
-			backdrop-filter: blur(24px) saturate(1.2);
-			-webkit-backdrop-filter: blur(24px) saturate(1.2);
+			backdrop-filter: blur(8px) saturate(1.2);
+			-webkit-backdrop-filter: blur(8px) saturate(1.2);
 			box-shadow: var(--box-shadow);
 			color: var(--text-base);
 			border-radius: var(--border-radius);

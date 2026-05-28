@@ -80,8 +80,8 @@ export default defineComponent({
 <style lang="scss" scoped>
 .login-dialog {
 	background-color: var(--background-base);
-	backdrop-filter: blur(24px) saturate(1.2);
-	-webkit-backdrop-filter: blur(24px) saturate(1.2);
+	backdrop-filter: blur(8px) saturate(1.2);
+	-webkit-backdrop-filter: blur(8px) saturate(1.2);
 	border: 1px solid var(--border-color);
 
 	.login-dialog__header {

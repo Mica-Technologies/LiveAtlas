@@ -28,8 +28,8 @@
 	overflow: visible;
 	font-size: 1.5rem;
 	flex-shrink: 0;
-	backdrop-filter: blur(24px) saturate(1.2);
-	-webkit-backdrop-filter: blur(24px) saturate(1.2);
+	backdrop-filter: blur(8px) saturate(1.2);
+	-webkit-backdrop-filter: blur(8px) saturate(1.2);
 	border: 1px solid var(--border-color);
 	transition: background-color 0.15s ease, box-shadow 0.15s ease;
 
@@ -65,8 +65,8 @@
 	padding: 0;
 	border: none;
 	box-shadow: var(--box-shadow);
-	backdrop-filter: blur(24px) saturate(1.2);
-	-webkit-backdrop-filter: blur(24px) saturate(1.2);
+	backdrop-filter: blur(8px) saturate(1.2);
+	-webkit-backdrop-filter: blur(8px) saturate(1.2);
 
 	// Drop the blur during map move/zoom — see %panel for the rationale.
 	body.map-moving & {
