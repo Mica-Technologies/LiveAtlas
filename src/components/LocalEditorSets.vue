@@ -189,8 +189,10 @@ export default defineComponent({
 <style lang="scss">
 	.local-sets {
 		border: 1px solid var(--border-color);
-		border-radius: 0.4rem;
-		background-color: var(--background-light);
+		border-radius: var(--border-radius);
+		// Subtle translucent overlay so the section reads as nested without
+		// "punching out" against the editor panel's glass surface.
+		background-color: var(--background-hover);
 
 		&__summary {
 			cursor: pointer;

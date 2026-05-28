@@ -217,34 +217,34 @@
 				@update:model-value="updateField('description', $event)" />
 
 			<div class="local-editor__form-actions">
-				<v-btn variant="text" size="small" @click="panToSelected">Pan to marker</v-btn>
+				<v-btn variant="tonal" size="small" @click="panToSelected">Pan to marker</v-btn>
 				<!-- Edit-origin: offer queue-deletion + discard (which restores the server marker). -->
 				<template v-if="selected.origin === 'edit'">
-					<v-btn variant="text" size="small" color="warning" @click="toggleDelete">Queue deletion</v-btn>
-					<v-btn variant="text" size="small" @click="discardEdit">Discard edit</v-btn>
+					<v-btn variant="tonal" size="small" color="warning" @click="toggleDelete">Queue deletion</v-btn>
+					<v-btn variant="tonal" size="small" @click="discardEdit">Discard edit</v-btn>
 				</template>
 				<!-- Delete-origin: offer restore-to-edit + discard. The shape can't be field-edited. -->
 				<template v-else-if="selected.origin === 'delete'">
-					<v-btn variant="text" size="small" @click="toggleDelete">Edit instead</v-btn>
-					<v-btn variant="text" size="small" @click="discardEdit">Discard</v-btn>
+					<v-btn variant="tonal" size="small" @click="toggleDelete">Edit instead</v-btn>
+					<v-btn variant="tonal" size="small" @click="discardEdit">Discard</v-btn>
 				</template>
 				<!-- Locally-created marker: regular Delete button (drops from pending list). -->
-				<v-btn v-else variant="text" size="small" color="error" @click="deleteSelected">Delete</v-btn>
+				<v-btn v-else variant="tonal" size="small" color="error" @click="deleteSelected">Delete</v-btn>
 			</div>
 		</section>
 
 		<footer class="local-editor__footer">
 			<div class="local-editor__footer-row">
-				<v-btn variant="text" size="small" color="error"
+				<v-btn variant="tonal" size="small" color="error"
 					:disabled="!hasAnythingSaved" @click="clearAll"
 					title="Discard every pending marker, set, and any data stored in this browser.">
 					Clear all saved
 				</v-btn>
-				<v-btn variant="text" size="small" @click="triggerImport"
+				<v-btn variant="tonal" size="small" @click="triggerImport"
 					title="Load markers and sets from a previously exported file.">
 					Import…
 				</v-btn>
-				<v-btn variant="text" size="small" :disabled="!hasAnythingToExport" @click="exportSnapshot"
+				<v-btn variant="tonal" size="small" :disabled="!hasAnythingToExport" @click="exportSnapshot"
 					title="Download the pending markers and sets as a JSON file you can re-import later.">
 					Export
 				</v-btn>
@@ -951,7 +951,9 @@ export default defineComponent({
 		&__hint {
 			margin: 0;
 			padding: 0.8rem 1rem;
-			background-color: var(--background-light);
+			// Subtle translucent overlay so the block reads as a section
+			// without "punching out" against the panel's glass surface.
+			background-color: var(--background-hover);
 			border: 1px solid var(--border-color);
 			border-radius: var(--border-radius);
 			font-size: 1.3rem;
