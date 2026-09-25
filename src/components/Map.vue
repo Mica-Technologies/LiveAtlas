@@ -20,6 +20,7 @@
 			<TileLayer v-for="[name, map] in maps" :key="name" :options="map" :leaflet="leaflet"></TileLayer>
 
 			<TileLayerOverlay v-for="[name, overlay] in overlays" :key="name" :options="overlay" :leaflet="leaflet"></TileLayerOverlay>
+			<Weather2RadarLayer :leaflet="leaflet"></Weather2RadarLayer>
 			<PlayersLayer v-if="playerMarkersEnabled" :leaflet="leaflet"></PlayersLayer>
 			<MarkerSetLayer v-for="[name, markerSet] in markerSets" :key="name" :markerSet="markerSet" :leaflet="leaflet"></MarkerSetLayer>
 			<LocalEditorLayer :leaflet="leaflet"></LocalEditorLayer>
@@ -59,6 +60,7 @@ import {LoadingControl} from "@/leaflet/control/LoadingControl";
 import MapContextMenu from "@/components/map/MapContextMenu.vue";
 import LoginControl from "@/components/map/control/LoginControl.vue";
 import TileLayerOverlay from "@/components/map/layer/TileLayerOverlay.vue";
+import Weather2RadarLayer from "@/components/map/layer/Weather2RadarLayer.vue";
 
 export default defineComponent({
 	components: {
@@ -67,6 +69,7 @@ export default defineComponent({
 		TileLayer,
 		PlayersLayer,
 		MarkerSetLayer,
+		Weather2RadarLayer,
 		LocalEditorLayer,
 		CoordinatesControl,
 		ToolsControl,
