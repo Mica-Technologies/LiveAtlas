@@ -39,7 +39,7 @@ export class GenericMarker extends Marker {
 		});
 
 		this.options.maxZoom = options.maxZoom;
-		this.options.minZoom = options.maxZoom;
+		this.options.minZoom = options.minZoom;
 	}
 
 	// noinspection JSUnusedGlobalSymbols

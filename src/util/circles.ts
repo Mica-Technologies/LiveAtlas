@@ -21,7 +21,7 @@ import {LatLngExpression} from "leaflet";
 import {LiveAtlasCircleMarker} from "@/index";
 import LiveAtlasPolyline from "@/leaflet/vector/LiveAtlasPolyline";
 import LiveAtlasPolygon from "@/leaflet/vector/LiveAtlasPolygon";
-import {createPopup, suppressTooltipWhilePopupOpen, tooltipOptions} from "@/util/paths";
+import {arePointsEqual, createPopup, isStyleEqual, refreshPopup, suppressTooltipWhilePopupOpen, tooltipOptions} from "@/util/paths";
 
 /**
  * Creates a {@link LiveAtlasPolygon} with the given options
@@ -63,26 +63,42 @@ export const updateCircleLayer = (circle: LiveAtlasPolyline | LiveAtlasPolygon |
 
 	const outline = (options.style && options.style.fillOpacity && (options.style.fillOpacity <= 0)) as boolean;
 
-	circle.closePopup();
-	circle.unbindPopup();
-	circle.closeTooltip();
-	circle.unbindTooltip();
+	refreshPopup(circle, options.popup, () => createPopup(options, 'CirclePopup'));
 
-	if (options.popup) {
-		circle.bindPopup(() => createPopup(options, 'CirclePopup'));
+	// While the popup is open its tooltip is deliberately unbound (suppressTooltipWhilePopupOpen),
+	// and it is rebound when the popup closes, so leave the tooltip alone until then.
+	if (!circle.isPopupOpen()) {
+		circle.closeTooltip();
+		circle.unbindTooltip();
+
+		if (options.tooltip) {
+			circle.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
+		}
+
+		if (options.popup && options.tooltip) {
+			suppressTooltipWhilePopupOpen(circle);
+		}
 	}
 
-	if (options.tooltip) {
-		circle.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
+	// Rebuilding and redrawing the 360-point outline on every update is expensive for markers that
+	// update often; only touch what changed, as updateAreaLayer does.
+	let dirty = false;
+
+	if(!isStyleEqual(circle.options, options.style)) {
+		circle.setStyle(options.style);
+		dirty = true;
 	}
 
-	if (options.popup && options.tooltip) {
-		suppressTooltipWhilePopupOpen(circle);
+	const points = getCirclePoints(options, converter, outline);
+
+	if(!arePointsEqual(circle.getLatLngs(), points)) {
+		circle.setLatLngs(points);
+		dirty = true;
 	}
 
-	circle.setStyle(options.style);
-	circle.setLatLngs(getCirclePoints(options, converter, outline));
-	circle.redraw();
+	if(dirty) {
+		circle.redraw();
+	}
 
 	return circle;
 }

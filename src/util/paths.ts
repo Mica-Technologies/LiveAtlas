@@ -56,6 +56,41 @@ export const isStyleEqual = (oldStyle: PathOptions, newStyle: PathOptions) => {
  * @param {string} className Classname to add to the popup element
  * @returns {HTMLSpanElement} The marker element
  */
+/**
+ * Refreshes a marker layer's popup after a marker update without closing it if it is open.
+ *
+ * Marker updates arrive every few seconds for moving markers (weather layers, players' claims
+ * being edited, ...). Unbinding and rebinding the popup on each update closed it under the reader.
+ * Instead the existing popup keeps its place and only its content is swapped, which Leaflet
+ * re-renders in place if the popup is open, and only when the popup text actually changed.
+ * @param layer The marker layer
+ * @param source The popup source text (HTML or plain), or undefined for no popup
+ * @param render Builds the popup element; called lazily by Leaflet when the popup is shown
+ * @param onBind Called after a popup is first bound, for listeners that go with it
+ */
+export const refreshPopup = (layer: Layer, source: string | undefined, render: () => HTMLElement, onBind?: () => void): void => {
+	const state = layer as Layer & {_liveAtlasPopupSource?: string};
+
+	if (!source) {
+		if (layer.getPopup()) {
+			layer.closePopup();
+			layer.unbindPopup();
+		}
+		state._liveAtlasPopupSource = undefined;
+		return;
+	}
+
+	if (!layer.getPopup()) {
+		layer.bindPopup(render);
+		onBind?.();
+	} else if (state._liveAtlasPopupSource !== source) {
+		// Popup.setContent accepts a render function, as bindPopup does; it re-renders in place when open.
+		layer.getPopup()!.setContent(render);
+	}
+
+	state._liveAtlasPopupSource = source;
+};
+
 export const createPopup = (options: LiveAtlasPathMarker, className: string): HTMLElement => {
 	const popup = document.createElement('span');
 

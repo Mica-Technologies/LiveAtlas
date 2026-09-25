@@ -179,9 +179,11 @@ export default class LiveAtlasLayerGroup extends LayerGroup {
 	}
 
 	//Returns if the given layer has its own zoom limits defined
+	// A layer is zoom limited if it has either limit. Requiring both meant a marker with only a
+	// minimum (or only a maximum) zoom was shown at every zoom level.
 	private static _isLayerZoomLimited(layer: Layer) {
-		return ((layer as any).options && (layer as any).options.minZoom !== undefined)
-			&& ((layer as any).options && (layer as any).options.maxZoom !== undefined);
+		const options = (layer as any).options;
+		return !!options && (options.minZoom !== undefined || options.maxZoom !== undefined);
 	}
 
 	private static _isLayerVisible(layer: Layer, currentZoom: number) {

@@ -17,6 +17,7 @@
 import {LiveAtlasPointMarker} from "@/index";
 import {GenericIcon} from "@/leaflet/icon/GenericIcon";
 import {GenericMarker} from "@/leaflet/marker/GenericMarker";
+import {refreshPopup} from "@/util/paths";
 
 /**
  * Creates a {@link GenericMarker} with the given options
@@ -68,13 +69,7 @@ export const updatePointLayer = (marker: GenericMarker | undefined, options: Liv
 		}
 	}
 
-	marker.closePopup();
-	marker.unbindPopup();
-
-	if (options.popup) {
-		marker.bindPopup(() => createPopup(options));
-		bindLabelSuppression(marker);
-	}
+	refreshPopup(marker, options.popup, () => createPopup(options), () => bindLabelSuppression(marker));
 
 	return marker;
 };

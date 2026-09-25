@@ -20,7 +20,7 @@
 import {LatLngExpression} from "leaflet";
 import {Coordinate, LiveAtlasLineMarker} from "@/index";
 import LiveAtlasPolyline from "@/leaflet/vector/LiveAtlasPolyline";
-import {createPopup, suppressTooltipWhilePopupOpen, tooltipOptions} from "@/util/paths";
+import {createPopup, refreshPopup, suppressTooltipWhilePopupOpen, tooltipOptions} from "@/util/paths";
 
 /**
  * Creates a {@link LiveAtlasPolyline} with the given options
@@ -59,21 +59,21 @@ export const updateLineLayer = (line: LiveAtlasPolyline | undefined, options: Li
 		return createLineLayer(options, converter);
 	}
 
-	line.closePopup();
-	line.unbindPopup();
-	line.closeTooltip();
-	line.unbindTooltip();
+	refreshPopup(line, options.popup, () => createPopup(options, 'LinePopup'));
 
-	if (options.popup) {
-		line.bindPopup(() => createPopup(options, 'LinePopup'));
-	}
+	// While the popup is open its tooltip is deliberately unbound (suppressTooltipWhilePopupOpen),
+	// and it is rebound when the popup closes, so leave the tooltip alone until then.
+	if (!line.isPopupOpen()) {
+		line.closeTooltip();
+		line.unbindTooltip();
 
-	if (options.tooltip) {
-		line.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
-	}
+		if (options.tooltip) {
+			line.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
+		}
 
-	if (options.popup && options.tooltip) {
-		suppressTooltipWhilePopupOpen(line);
+		if (options.popup && options.tooltip) {
+			suppressTooltipWhilePopupOpen(line);
+		}
 	}
 
 	line.setStyle(options.style);
