@@ -1,16 +1,15 @@
 <!--
-  - Weather radar overlay for maps served alongside the Weather2 Remastered Minecraft mod.
+  - Image overlays for maps served alongside the Weather2 Remastered Minecraft mod.
   -
-  - Weather2 renders realistic radar reflectivity images into <dynmap web>/weather2/<world>/
-  - (an index.json listing frames and tiles, plus the PNG tiles). This layer shows the latest
-  - frame over the map and refreshes it while the layer is on. Nothing appears on servers without
+  - Weather2 writes image products into <dynmap web>/weather2/<world>/: the radar reflectivity
+  - directly there, and other products (such as "temperature") in a sub-folder of that name. Each
+  - has an index.json listing frames and tiles, plus the PNG tiles. This layer shows the latest
+  - frame of one product and refreshes it while the layer is on. Nothing appears on servers without
   - Weather2: the index is simply not there, and the layer never joins the layer control.
   -
   - Configure the location with liveAtlasConfig.weather2 = {url: "weather2/", refreshMs: 10000,
-  - opacity: 0.75} in index.html; all fields are optional.
+  - opacity: 0.75} in index.html; all fields are optional. The opacity applies to the radar.
   -->
-
-<template></template>
 
 <script lang="ts">
 import {computed, defineComponent, onUnmounted, watch} from "vue";
@@ -41,6 +40,40 @@ export default defineComponent({
 			type: Object as () => LiveAtlasLeafletMap,
 			required: true,
 		},
+		/** Sub-folder of the product, or empty for the radar. */
+		product: {
+			type: String,
+			default: '',
+		},
+		label: {
+			type: String,
+			default: 'Weather Radar',
+		},
+		/** Position in the layer control. */
+		position: {
+			type: Number,
+			default: 5,
+		},
+		/** Stacking order of the product's pane; the radar sits above other products. */
+		zIndex: {
+			type: Number,
+			default: 350,
+		},
+		/** Smooth pixels (fields like temperature) instead of crisp radar pixels. */
+		smooth: {
+			type: Boolean,
+			default: false,
+		},
+		/** Overrides the configured opacity for this product. */
+		opacity: {
+			type: Number,
+			default: undefined,
+		},
+		/** Joins the layer control switched off. */
+		hiddenByDefault: {
+			type: Boolean,
+			default: false,
+		},
 	},
 
 	setup(props) {
@@ -48,7 +81,9 @@ export default defineComponent({
 			config: Weather2Config = (window as any).liveAtlasConfig?.weather2 || {},
 			baseUrl = config.url || 'weather2/',
 			refreshMs = config.refreshMs || 10000,
-			opacity = typeof config.opacity === 'number' ? config.opacity : 0.75,
+			opacity = typeof props.opacity === 'number' ? props.opacity : typeof config.opacity === 'number' ? config.opacity : 0.75,
+			productPath = props.product ? `${props.product}/` : '',
+			pane = PANE + (props.product || ''),
 			currentWorld = computed(() => store.state.currentWorld),
 			currentMap = computed(() => store.state.currentMap),
 			layerGroup = new LayerGroup();
@@ -59,12 +94,12 @@ export default defineComponent({
 			timer: number | undefined,
 			warnedOrientation = false;
 
-		// The radar sits above the terrain tiles and below markers, so storm icons and warning
-		// boxes stay on top of it.
-		if(!props.leaflet.getPane(PANE)) {
-			const pane = props.leaflet.createPane(PANE);
-			pane.style.zIndex = '350';
-			pane.style.pointerEvents = 'none';
+		// Products sit above the terrain tiles and below markers, so storm icons and warning
+		// boxes stay on top of them.
+		if(!props.leaflet.getPane(pane)) {
+			const element = props.leaflet.createPane(pane);
+			element.style.zIndex = String(props.zIndex);
+			element.style.pointerEvents = 'none';
 		}
 
 		const schedule = (delay: number) => {
@@ -116,8 +151,8 @@ export default defineComponent({
 					clear();
 					return;
 				}
-				next.push(new ImageOverlay(`${baseUrl}${worldSlug}/${frame.id}/${tx}_${tz}.png`, bounds, {
-					pane: PANE, opacity: 0, interactive: false, className: 'weather2-radar-tile',
+				next.push(new ImageOverlay(`${baseUrl}${worldSlug}/${productPath}${frame.id}/${tx}_${tz}.png`, bounds, {
+					pane, opacity: 0, interactive: false, className: props.smooth ? 'weather2-field-tile' : 'weather2-radar-tile',
 				}));
 			}
 			// Load the new frame invisibly, then swap, so the radar never flashes empty.
@@ -149,14 +184,18 @@ export default defineComponent({
 			}
 			const worldSlug = slug(world.name);
 			try {
-				const response = await fetch(`${baseUrl}${worldSlug}/index.json?t=${Date.now()}`, {cache: 'no-store'});
+				const response = await fetch(`${baseUrl}${worldSlug}/${productPath}index.json?t=${Date.now()}`, {cache: 'no-store'});
 				if(!response.ok) {
 					throw new Error(`HTTP ${response.status}`);
 				}
 				const index = await response.json() as RadarIndex;
 				if(!inControl) {
-					// Only now that radar data exists does the layer appear in the layer control.
-					props.leaflet.getLayerManager().addLayer(layerGroup, true, 'Weather Radar', 5);
+					// Only now that data exists does the layer appear in the layer control.
+					if(props.hiddenByDefault) {
+						props.leaflet.getLayerManager().addHiddenLayer(layerGroup, props.label, props.position);
+					} else {
+						props.leaflet.getLayerManager().addLayer(layerGroup, true, props.label, props.position);
+					}
 					inControl = true;
 				}
 				if(props.leaflet.hasLayer(layerGroup)) {
@@ -169,6 +208,12 @@ export default defineComponent({
 				schedule(60000);
 			}
 		};
+
+		// Switched on from the layer control: show the latest frame now rather than at the next poll.
+		layerGroup.on('add', () => {
+			shownFrame = '';
+			schedule(0);
+		});
 
 		watch([currentWorld, currentMap], () => {
 			clear();
@@ -184,6 +229,10 @@ export default defineComponent({
 			}
 		});
 	},
+
+	render() {
+		return null;
+	},
 });
 </script>
 
@@ -192,5 +241,10 @@ export default defineComponent({
 	.weather2-radar-tile {
 		image-rendering: pixelated;
 		image-rendering: crisp-edges;
+	}
+
+	/* Smooth fields such as temperature are interpolated, and a little see-through over terrain. */
+	.weather2-field-tile {
+		image-rendering: auto;
 	}
 </style>

@@ -21,6 +21,8 @@
 
 			<TileLayerOverlay v-for="[name, overlay] in overlays" :key="name" :options="overlay" :leaflet="leaflet"></TileLayerOverlay>
 			<Weather2RadarLayer :leaflet="leaflet"></Weather2RadarLayer>
+			<Weather2RadarLayer :leaflet="leaflet" product="temperature" label="Temperature" :position="6" :z-index="340"
+				:smooth="true" :opacity="0.5" :hidden-by-default="true"></Weather2RadarLayer>
 			<PlayersLayer v-if="playerMarkersEnabled" :leaflet="leaflet"></PlayersLayer>
 			<MarkerSetLayer v-for="[name, markerSet] in markerSets" :key="name" :markerSet="markerSet" :leaflet="leaflet"></MarkerSetLayer>
 			<LocalEditorLayer :leaflet="leaflet"></LocalEditorLayer>
