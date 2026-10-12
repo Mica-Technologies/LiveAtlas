@@ -89,6 +89,8 @@ export default defineComponent({
 			layerGroup = new LayerGroup();
 
 		let overlays: ImageOverlay[] = [],
+			loading: ImageOverlay[] = [],
+			generation = 0,
 			shownFrame = '',
 			inControl = false,
 			timer: number | undefined,
@@ -107,9 +109,13 @@ export default defineComponent({
 			timer = window.setTimeout(refresh, delay);
 		};
 
+		// Also drops a frame that is still loading, so it can't swap itself in afterwards: a world
+		// change would otherwise end with the old world's radar over the new world's map.
 		const clear = () => {
-			overlays.forEach(o => layerGroup.removeLayer(o));
+			generation++;
+			overlays.concat(loading).forEach(o => layerGroup.removeLayer(o));
 			overlays = [];
+			loading = [];
 			shownFrame = '';
 		};
 
@@ -155,12 +161,20 @@ export default defineComponent({
 					pane, opacity: 0, interactive: false, className: props.smooth ? 'weather2-field-tile' : 'weather2-radar-tile',
 				}));
 			}
-			// Load the new frame invisibly, then swap, so the radar never flashes empty.
+			// Load the new frame invisibly, then swap, so the radar never flashes empty. A frame that
+			// is still loading when a newer one arrives is dropped, so frames can't land out of order.
+			loading.forEach(o => layerGroup.removeLayer(o));
+			loading = next;
+			const mine = ++generation;
 			let pending = next.length;
 			const swap = () => {
+				if(mine !== generation) {
+					return;
+				}
 				overlays.forEach(o => layerGroup.removeLayer(o));
 				next.forEach(o => o.setOpacity(opacity));
 				overlays = next;
+				loading = [];
 			};
 			if(!pending) {
 				swap();
