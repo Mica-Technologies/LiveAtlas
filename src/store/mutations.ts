@@ -45,6 +45,7 @@ import {MutationTypes} from "@/store/mutation-types";
 import {nonReactiveState, State} from "@/store/state";
 import {getServerMapProvider} from "@/util/config";
 import {getDefaultPlayerImage} from "@/util/images";
+import {coalesceMarkerUpdates} from "@/util/markerQueue";
 import {
 	clearPersisted as clearPersistedLocalEditor,
 	liveAtlasToLocalEditor,
@@ -355,7 +356,7 @@ export const mutations: MutationTree<State> & Mutations = {
 			}
 		}
 
-		state.pendingMarkerUpdates = state.pendingMarkerUpdates.concat(markers);
+		state.pendingMarkerUpdates = coalesceMarkerUpdates(state.pendingMarkerUpdates, markers);
 	},
 
 	//Adds tile updates from an update fetch to the pending updates list

@@ -234,9 +234,19 @@ export default defineComponent({
 			schedule(0);
 		});
 
+		// A hidden tab polls five times slower; on coming back, jump straight to the latest frame
+		// instead of showing an old one until that long timer runs out.
+		const onVisibilityChange = () => {
+			if(!document.hidden) {
+				schedule(0);
+			}
+		};
+		document.addEventListener('visibilitychange', onVisibilityChange);
+
 		schedule(0);
 
 		onUnmounted(() => {
+			document.removeEventListener('visibilitychange', onVisibilityChange);
 			window.clearTimeout(timer);
 			if(inControl) {
 				props.leaflet.getLayerManager().removeLayer(layerGroup);

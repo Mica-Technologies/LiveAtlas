@@ -119,23 +119,31 @@ export const unregisterSetUpdateHandler = (callback: LiveAtlasMarkerUpdateCallba
 	setUpdateHandlers[set].delete(callback);
 }
 
+/** Time each frame may spend applying marker updates, so a backlog clears in a few frames without stutter. */
+const UPDATE_FRAME_BUDGET_MS = 8;
+const UPDATE_BATCH = 10;
+
 /**
  * Handles pending marker updates, if any exist
- * Up to 10 updates will be taken from the list and the appropriate registered update handlers will be called
- * If further updates remain, an animation frame will be scheduled for further calls
+ * Updates are taken from the list in batches of 10 and passed to the registered update handlers until
+ * the frame's time budget is spent. If further updates remain, an animation frame is scheduled for them.
  * @private
  */
 const handlePendingUpdates = async () => {
 	const store = useStore(),
-		updates = await store.dispatch(ActionTypes.POP_MARKER_UPDATES, 10);
+		start = performance.now();
 
-	for(const update of updates) {
-		updateHandlers.forEach(callback => callback(update));
+	do {
+		const updates = await store.dispatch(ActionTypes.POP_MARKER_UPDATES, UPDATE_BATCH);
 
-		if(setUpdateHandlers[update.set]) {
-			setUpdateHandlers[update.set].forEach(callback => callback(update));
+		for(const update of updates) {
+			updateHandlers.forEach(callback => callback(update));
+
+			if(setUpdateHandlers[update.set]) {
+				setUpdateHandlers[update.set].forEach(callback => callback(update));
+			}
 		}
-	}
+	} while(pendingUpdates.value && performance.now() - start < UPDATE_FRAME_BUDGET_MS);
 
 	if(pendingUpdates.value) {
 		// eslint-disable-next-line no-unused-vars
