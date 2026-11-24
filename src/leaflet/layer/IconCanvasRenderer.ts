@@ -19,7 +19,7 @@ import type {CanvasIconMarker} from "@/leaflet/marker/CanvasIconMarker";
 export const ICON_CANVAS_PANE = 'marker-icons';
 
 /** How long the highlight from pinging a marker in the sidebar lasts. */
-const PING_DURATION_MS = 1400;
+const PING_DURATION_MS = 2200;
 
 /** Extra pixels around an icon that still count as hitting it, so small icons are easy to click. */
 const HIT_SLOP = 2;
@@ -276,15 +276,22 @@ export class IconCanvasRenderer extends Renderer {
 			return;
 		}
 
+		// Fades in fast, holds, then fades out, pulsing twice so it catches the eye on a busy map
 		const progress = elapsed / PING_DURATION_MS,
-			alpha = progress < 0.15 ? progress / 0.15 : 1 - (progress - 0.15) / 0.85,
+			alpha = progress < 0.08 ? progress / 0.08 : progress < 0.6 ? 1 : 1 - (progress - 0.6) / 0.4,
+			pulse = (Math.sin(progress * Math.PI * 4 - Math.PI / 2) + 1) / 2,
+			radius = 13 + 8 * pulse,
 			centre = this._map.latLngToLayerPoint(this._ping.latLng);
 
 		ctx.save();
-		ctx.strokeStyle = `rgba(255, 220, 80, ${alpha})`;
-		ctx.lineWidth = 3;
 		ctx.beginPath();
-		ctx.arc(centre.x, centre.y, 12 + 10 * progress, 0, Math.PI * 2);
+		ctx.arc(centre.x, centre.y, radius, 0, Math.PI * 2);
+		// A dark edge under the yellow keeps it visible on light ground as well as dark
+		ctx.strokeStyle = `rgba(0, 0, 0, ${alpha * 0.6})`;
+		ctx.lineWidth = 7;
+		ctx.stroke();
+		ctx.strokeStyle = `rgba(255, 220, 80, ${alpha})`;
+		ctx.lineWidth = 4;
 		ctx.stroke();
 		ctx.restore();
 
