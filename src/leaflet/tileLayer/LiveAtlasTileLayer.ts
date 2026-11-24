@@ -152,8 +152,12 @@ export abstract class LiveAtlasTileLayer extends TileLayer {
 		}
 	}
 
-	/** Most tile requests in flight at once. Browsers allow 6 connections per host over HTTP/1.1. */
-	protected static readonly MAX_CONCURRENT_LOADS = 7;
+	/**
+	 * Most tile requests in flight at once. Over HTTP/2 they all share one connection, so a screenful
+	 * of tiles loads in a few round trips rather than one per six tiles. Over HTTP/1.1 the browser
+	 * still holds them to 6 per host, so a higher number costs nothing there.
+	 */
+	protected static readonly MAX_CONCURRENT_LOADS = 16;
 
 	// Fills every free slot, not just one: when a batch of tile updates or a refresh queues many tiles
 	// at once, starting one per call left them loading one at a time
