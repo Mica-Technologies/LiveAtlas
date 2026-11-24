@@ -289,7 +289,12 @@ export default class DynmapMapProvider extends MapProvider {
 				const delay = document.hidden
 					? this.updateInterval * DynmapMapProvider.HIDDEN_TAB_POLL_MULTIPLIER
 					: this.updateInterval;
-				this.updateTimeout = setTimeout(() => this.update(), delay);
+				this.updateTimeout = setTimeout(() => {
+					// Cleared once fired, so the visibility handler can tell an update is in flight
+					// and doesn't start a second update loop alongside it
+					this.updateTimeout = null;
+					this.update();
+				}, delay);
 			}
 		}
 	}

@@ -623,23 +623,24 @@ export default defineComponent({
 			// just visually overlap with the marker itself.
 		};
 
+		// Snap targets minus the vertices of the area or line being drawn. Runs on every mouse move
+		// frame over every server marker and vertex, so the drawn points go in a set rather than being
+		// searched for each target.
+		const withoutDrawingPoints = (targets: Coordinate[]): Coordinate[] => {
+			if(!drawing.value) return targets;
+			const drawingMarker = markers.value.find(mm => mm.id === drawing.value!.id);
+			if(!drawingMarker || (drawingMarker.type !== 'area' && drawingMarker.type !== 'line')) return targets;
+			const own = new Set<Coordinate>(drawingMarker.points);
+			return targets.filter(t => !own.has(t));
+		};
+
 		// Snap a clicked location to a nearby existing vertex (XZ only)
 		// if snapping is enabled and Shift isn't held to override.
 		const applySnap = (location: Coordinate, shiftHeld: boolean): Coordinate => {
 			if(!snapEnabled.value || shiftHeld) return location;
-			const targets = snapTargets.value;
 			// Don't snap to the marker currently being drawn — its own vertices
 			// would prevent the user from extending it freely.
-			const filtered = drawing.value
-				? targets.filter(t => {
-					const m = markers.value.find(mm => mm.id === drawing.value!.id);
-					if(!m) return true;
-					if(m.type === 'area' || m.type === 'line') {
-						return !m.points.includes(t as Coordinate);
-					}
-					return true;
-				})
-				: targets;
+			const filtered = withoutDrawingPoints(snapTargets.value);
 			const snapped = findSnapTarget(location, filtered);
 			return snapped ? {x: snapped.x, y: location.y, z: snapped.z} : location;
 		};
@@ -724,11 +725,7 @@ export default defineComponent({
 				hideSnapIndicator();
 				return;
 			}
-			const targets = snapTargets.value;
-			const drawingMarker = markers.value.find(mm => mm.id === drawing.value!.id);
-			const filtered = drawingMarker && (drawingMarker.type === 'area' || drawingMarker.type === 'line')
-				? targets.filter(t => !drawingMarker.points.includes(t))
-				: targets;
+			const filtered = withoutDrawingPoints(snapTargets.value);
 			const snapped = findSnapTarget(raw, filtered);
 			if(snapped) {
 				updateSnapIndicator(currentMap.value.locationToLatLng(snapped));

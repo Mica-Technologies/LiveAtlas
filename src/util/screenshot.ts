@@ -103,7 +103,8 @@ export const captureMapScreenshot = async (mapEl: HTMLElement): Promise<Screensh
 
 	// 3. Point marker icons (label spans are skipped intentionally).
 	const markerIcons = mapEl.querySelectorAll<HTMLImageElement>(
-		'.leaflet-marker-pane .marker .marker__icon, .leaflet-marker-pane > .leaflet-marker-icon img');
+		// Marker sets each have their own pane (leaflet-<set>-markers-pane), not Leaflet's marker pane
+		'.leaflet-pane .marker:not(.marker--player) .marker__icon, .leaflet-marker-pane > .leaflet-marker-icon img');
 	for(const icon of markerIcons) {
 		if(!icon.complete || icon.naturalWidth === 0) continue;
 		const r = icon.getBoundingClientRect();

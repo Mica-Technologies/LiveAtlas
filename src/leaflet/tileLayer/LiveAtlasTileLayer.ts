@@ -152,19 +152,22 @@ export abstract class LiveAtlasTileLayer extends TileLayer {
 		}
 	}
 
+	/** Most tile requests in flight at once. Browsers allow 6 connections per host over HTTP/1.1. */
+	protected static readonly MAX_CONCURRENT_LOADS = 7;
+
+	// Fills every free slot, not just one: when a batch of tile updates or a refresh queues many tiles
+	// at once, starting one per call left them loading one at a time
 	protected tickLoadQueue() {
-		if (this.loadingTiles.size > 6) {
-			return;
+		while (this.loadingTiles.size < LiveAtlasTileLayer.MAX_CONCURRENT_LOADS) {
+			const tile = this.loadQueue.shift();
+
+			if (!tile) {
+				return;
+			}
+
+			this.loadingTiles.add(tile);
+			this.fetchTile(tile);
 		}
-
-		const tile = this.loadQueue.shift();
-
-		if (!tile) {
-			return;
-		}
-
-		this.loadingTiles.add(tile);
-		this.fetchTile(tile);
 	}
 
 	refresh() {
@@ -235,25 +238,29 @@ export abstract class LiveAtlasTileLayer extends TileLayer {
 
 	onAdd(map: LeafletMap): this {
 		if(this.options.tileUpdateInterval) {
+			clearTimeout(this.refreshTimeout);
 			this.refreshTimeout = setTimeout(() => this.handlePeriodicRefresh(), this.options.tileUpdateInterval);
 		}
 
 		return super.onAdd(map);
 	}
 
-	remove() {
-		if(this.refreshTimeout) {
-			clearTimeout(this.refreshTimeout);
-		}
+	// Cleared here rather than in remove(): overlays switched off from the layer control are only
+	// removed from the map, and each time they were switched back on another refresh timer started
+	onRemove(map: LeafletMap): this {
+		clearTimeout(this.refreshTimeout);
+		this.refreshTimeout = undefined;
 
-		return super.remove();
+		return super.onRemove(map);
 	}
 
 	private handlePeriodicRefresh() {
-		if(this._map) {
-			this.refresh();
+		if(!this._map) {
+			this.refreshTimeout = undefined;
+			return;
 		}
 
+		this.refresh();
 		this.refreshTimeout = setTimeout(() => this.handlePeriodicRefresh(), this.options.tileUpdateInterval);
 	}
 }

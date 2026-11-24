@@ -309,6 +309,8 @@ export const mutations: MutationTree<State> & Mutations = {
 			if(update.removed) {
 				state.markerSets.delete(update.id);
 				nonReactiveState.markers.delete(update.id);
+				// Updates queued for the deleted set have nowhere to go
+				state.pendingMarkerUpdates = state.pendingMarkerUpdates.filter(u => u.set !== update.id);
 				continue;
 			}
 
@@ -342,10 +344,10 @@ export const mutations: MutationTree<State> & Mutations = {
 	[MutationTypes.ADD_MARKER_UPDATES](state: State, markers: DynmapMarkerUpdate[]) {
 		let setContents;
 
+		// Updates for sets that don't exist are dropped rather than queued: nothing handles them
+		markers = markers.filter(update => nonReactiveState.markers.has(update.set));
+
 		for (const update of markers) {
-			if(!nonReactiveState.markers.has(update.set)) {
-				continue;
-			}
 
 			setContents = nonReactiveState.markers.get(update.set) as Map<string, LiveAtlasMarker>;
 
@@ -399,13 +401,15 @@ export const mutations: MutationTree<State> & Mutations = {
 	},
 
 	//Pops the specified number of marker updates from the pending updates list
+	// One assignment rather than splice(): splicing the front of a reactive array goes through Vue's
+	// proxy for every element it shifts, and this runs many times per frame during an update burst
 	[MutationTypes.POP_MARKER_UPDATES](state: State, amount: number) {
-		state.pendingMarkerUpdates.splice(0, amount);
+		state.pendingMarkerUpdates = state.pendingMarkerUpdates.slice(amount);
 	},
 
 	//Pops the specified number of tile updates from the pending updates list
 	[MutationTypes.POP_TILE_UPDATES](state: State, amount: number) {
-		state.pendingTileUpdates.splice(0, amount);
+		state.pendingTileUpdates = state.pendingTileUpdates.slice(amount);
 	},
 
 	[MutationTypes.SET_MAX_PLAYERS](state: State, maxPlayers: number) {
@@ -426,12 +430,14 @@ export const mutations: MutationTree<State> & Mutations = {
 				existing!.location = Object.assign(existing!.location, player.location);
 				existing!.yaw = player.yaw;
 				existing!.hidden = player.hidden;
-				existing!.displayName = player.displayName;
-				existing!.sort = player.sort;
 
+				// Compare before assigning, or the list never re-sorts on a name or sort change
 				if(existing!.displayName !== player.displayName || existing!.sort !== player.sort) {
 					state.sortedPlayers.dirty = true;
 				}
+
+				existing!.displayName = player.displayName;
+				existing!.sort = player.sort;
 			} else {
 				state.sortedPlayers.dirty = true;
 				state.players.set(player.name, {

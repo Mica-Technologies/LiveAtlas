@@ -94,7 +94,8 @@ export default defineComponent({
 			shownFrame = '',
 			inControl = false,
 			timer: number | undefined,
-			warnedOrientation = false;
+			warnedOrientation = false,
+			unmounted = false;
 
 		// Products sit above the terrain tiles and below markers, so storm icons and warning
 		// boxes stay on top of them.
@@ -105,6 +106,11 @@ export default defineComponent({
 		}
 
 		const schedule = (delay: number) => {
+			// A fetch still in flight when the layer went away would otherwise keep polling for good
+			if(unmounted) {
+				return;
+			}
+
 			window.clearTimeout(timer);
 			timer = window.setTimeout(refresh, delay);
 		};
@@ -203,6 +209,10 @@ export default defineComponent({
 					throw new Error(`HTTP ${response.status}`);
 				}
 				const index = await response.json() as RadarIndex;
+				// Gone, or the world changed while this loaded (the watcher has started a new refresh)
+				if(unmounted || currentWorld.value !== world) {
+					return;
+				}
 				if(!inControl) {
 					// Only now that data exists does the layer appear in the layer control.
 					if(props.hiddenByDefault) {
@@ -246,6 +256,7 @@ export default defineComponent({
 		schedule(0);
 
 		onUnmounted(() => {
+			unmounted = true;
 			document.removeEventListener('visibilitychange', onVisibilityChange);
 			window.clearTimeout(timer);
 			if(inControl) {

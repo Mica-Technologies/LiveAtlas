@@ -86,7 +86,7 @@
 </template>
 
 <script lang="ts">
-import {computed, defineComponent, onMounted, onUnmounted, watch, CSSProperties, ref, nextTick} from "vue";
+import {computed, defineComponent, onMounted, onUnmounted, watch, CSSProperties, ref, shallowRef, nextTick} from "vue";
 import {LeafletMouseEvent} from "leaflet";
 import {useStore} from "@/store";
 import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
@@ -117,8 +117,10 @@ export default defineComponent({
 
 	setup(props) {
 		const store = useStore(),
-			event = ref<LeafletMouseEvent | null>(null),
-			lastMouseMoveEvent = ref<LeafletMouseEvent | null>(null),
+			// Shallow: these hold Leaflet events (with the map and DOM events inside), set on every
+			// mouse move, which there is no reason to make deeply reactive
+			event = shallowRef<LeafletMouseEvent | null>(null),
+			lastMouseMoveEvent = shallowRef<LeafletMouseEvent | null>(null),
 			// The identity of the existing server marker right-clicked, if
 			// any. Set when the marker's contextmenu handler tags the event;
 			// otherwise null (i.e. the user right-clicked empty map).
@@ -387,15 +389,7 @@ export default defineComponent({
 			window.addEventListener('keyup', handleEsc);
 		});
 
-		onUnmounted(() => {
-			window.removeEventListener('click', closeContextMenu);
-			window.removeEventListener('keyup', handleEsc);
-		});
-
-		props.leaflet.on('movestart', closeContextMenu);
-		props.leaflet.on('zoomstart', closeContextMenu);
-
-		props.leaflet.on('contextmenu', (e: LeafletMouseEvent) => {
+		const onMapContextMenu = (e: LeafletMouseEvent) => {
 			if(e.originalEvent.target && (e.originalEvent.target as HTMLElement).closest('.leaflet-control')) {
 				return;
 			}
@@ -408,13 +402,13 @@ export default defineComponent({
 			const tagged = (e.originalEvent as unknown as {_editorMarkerTarget?: {setId: string, markerId: string}})._editorMarkerTarget;
 			markerTarget.value = tagged ?? null;
 			event.value = e;
-		});
+		};
 
-		props.leaflet.on('mousemove', (e: LeafletMouseEvent) => {
+		const onMapMouseMove = (e: LeafletMouseEvent) => {
 			lastMouseMoveEvent.value = e;
-		});
+		};
 
-		window.addEventListener('contextmenu', e => {
+		const onWindowContextMenu = (e: MouseEvent) => {
 			if(e.target && e.target instanceof HTMLElement && e.target.classList.contains('leaflet-zoom-animated')) {
 				e.preventDefault();
 				e.stopImmediatePropagation();
@@ -423,6 +417,23 @@ export default defineComponent({
 					event.value = lastMouseMoveEvent.value;
 				}
 			}
+		};
+
+		props.leaflet.on('movestart', closeContextMenu);
+		props.leaflet.on('zoomstart', closeContextMenu);
+		props.leaflet.on('contextmenu', onMapContextMenu as never);
+		props.leaflet.on('mousemove', onMapMouseMove as never);
+		window.addEventListener('contextmenu', onWindowContextMenu);
+
+		// Removed with the component: they were left behind, piling up on each remount
+		onUnmounted(() => {
+			window.removeEventListener('click', closeContextMenu);
+			window.removeEventListener('keyup', handleEsc);
+			window.removeEventListener('contextmenu', onWindowContextMenu);
+			props.leaflet.off('movestart', closeContextMenu);
+			props.leaflet.off('zoomstart', closeContextMenu);
+			props.leaflet.off('contextmenu', onMapContextMenu as never);
+			props.leaflet.off('mousemove', onMapMouseMove as never);
 		});
 
 		return {

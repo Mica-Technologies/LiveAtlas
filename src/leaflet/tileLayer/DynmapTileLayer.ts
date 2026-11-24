@@ -35,7 +35,12 @@ export class DynmapTileLayer extends LiveAtlasTileLayer {
 	private readonly _pendingUpdates: ComputedRef<boolean>;
 	private _nightUnwatch: WatchStopHandle | null = null;
 	private _updateUnwatch: WatchStopHandle | null = null;
-	private _updateFrame: number = 0;
+
+	// Tile updates come in one shared queue for every Dynmap tile layer on the map (the base map and
+	// any overlays). It is drained once, and each update is offered to every such layer: layers that
+	// drained it separately raced each other, and each threw away the updates for the others' tiles.
+	private static readonly _active: Set<DynmapTileLayer> = new Set();
+	private static _updateFrame: number = 0;
 
 	constructor(options: LiveAtlasTileLayerOptions) {
 		super(options);
@@ -48,10 +53,11 @@ export class DynmapTileLayer extends LiveAtlasTileLayer {
 	onAdd(map: LeafletMap) {
 		super.onAdd(map);
 
-		//Only watch updates when active map, to avoid stealing other map's tile updates
+		DynmapTileLayer._active.add(this);
+
 		this._updateUnwatch = watch(this._pendingUpdates, (newValue, oldValue) => {
-			if(newValue && !oldValue && !this._updateFrame) {
-				this.handlePendingUpdates();
+			if(newValue && !oldValue && !DynmapTileLayer._updateFrame) {
+				DynmapTileLayer.handlePendingUpdates(this._store);
 			}
 		});
 
@@ -90,9 +96,15 @@ export class DynmapTileLayer extends LiveAtlasTileLayer {
 		const tile = this._namedTiles.get(name);
 
 		if (tile) {
-			tile.classList.remove('leaflet-tile-loaded');
-			tile.dataset.src = this.getTileUrlFromName(name, timestamp);
-			this.loadQueue.push(tile);
+			// The tile is fetched from tile.url, so the timestamped URL has to go there to get the new
+			// image past the browser cache. The old image stays visible until the new one has loaded,
+			// rather than the tile going blank for the reload.
+			tile.url = this.getTileUrlFromName(name, timestamp);
+
+			if(!this.loadQueue.includes(tile)) {
+				this.loadQueue.push(tile);
+			}
+
 			this.tickLoadQueue();
 		}
 	}
@@ -181,36 +193,39 @@ export class DynmapTileLayer extends LiveAtlasTileLayer {
 		};
 	}
 
-	private async handlePendingUpdates() {
-		const updates = await this._store.dispatch(ActionTypes.POP_TILE_UPDATES, 10);
+	private static async handlePendingUpdates(store: Store) {
+		DynmapTileLayer._updateFrame = 0;
 
-		for(const update of updates) {
-			this.updateNamedTile(update.name, update.timestamp);
+		if(!DynmapTileLayer._active.size) {
+			return;
 		}
 
-		if(this._pendingUpdates.value) {
-			// eslint-disable-next-line no-unused-vars
-			this._updateFrame = requestAnimationFrame(() => this.handlePendingUpdates());
-		} else {
-			this._updateFrame = 0;
+		const updates = await store.dispatch(ActionTypes.POP_TILE_UPDATES, 10);
+
+		for(const update of updates) {
+			DynmapTileLayer._active.forEach(layer => layer.updateNamedTile(update.name, update.timestamp));
+		}
+
+		if(store.state.pendingTileUpdates.length && DynmapTileLayer._active.size) {
+			DynmapTileLayer._updateFrame = requestAnimationFrame(() => DynmapTileLayer.handlePendingUpdates(store));
 		}
 	}
 
-	remove() {
-		super.remove();
+	// Torn down here rather than in remove(): overlays switched off from the layer control are only
+	// removed from the map, and kept watching (and draining) tile updates from then on
+	onRemove(map: LeafletMap): this {
+		DynmapTileLayer._active.delete(this);
 
-		if(this._nightUnwatch) {
-			this._nightUnwatch();
+		if(!DynmapTileLayer._active.size && DynmapTileLayer._updateFrame) {
+			cancelAnimationFrame(DynmapTileLayer._updateFrame);
+			DynmapTileLayer._updateFrame = 0;
 		}
 
-		if(this._updateFrame) {
-			cancelAnimationFrame(this._updateFrame);
-		}
+		this._nightUnwatch?.();
+		this._nightUnwatch = null;
+		this._updateUnwatch?.();
+		this._updateUnwatch = null;
 
-		if(this._updateUnwatch) {
-			this._updateUnwatch();
-		}
-
-		return this;
+		return super.onRemove(map);
 	}
 }

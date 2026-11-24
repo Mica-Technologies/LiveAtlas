@@ -588,7 +588,11 @@ export default class Pl3xmapMapProvider extends MapProvider {
 				const delay = document.hidden
 					? this.playerUpdateInterval * Pl3xmapMapProvider.HIDDEN_TAB_POLL_MULTIPLIER
 					: this.playerUpdateInterval;
-				this.playerUpdateTimeout = setTimeout(() => this.updatePlayers(), delay);
+				this.playerUpdateTimeout = setTimeout(() => {
+					// Cleared once fired, so the visibility handler doesn't start a second loop
+					this.playerUpdateTimeout = null;
+					this.updatePlayers();
+				}, delay);
 			}
 		}
 	}

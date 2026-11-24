@@ -181,13 +181,23 @@ export const actions: ActionTree<State, State> & Actions = {
 			if(!players.size) {
 				resolve();
 			} else {
-				requestAnimationFrame(() => processQueue(players, resolve));
+				nextFrame(() => processQueue(players, resolve));
 			}
 		}
 
+		// Hidden tabs run no animation frames, so waiting on one there stalled the update loop until
+		// the tab came back. Nobody is watching a hidden tab, so do it all at once there instead.
+		const nextFrame = (callback: () => void) => {
+			if(document.hidden) {
+				callback();
+			} else {
+				requestAnimationFrame(callback);
+			}
+		};
+
 		//Set players every frame until done
 		return new Promise((resolve) => {
-			requestAnimationFrame(() => processQueue(players, resolve));
+			nextFrame(() => processQueue(players, resolve));
 		});
 	},
 
