@@ -91,6 +91,38 @@ export const refreshPopup = (layer: Layer, source: string | undefined, render: (
 	state._liveAtlasPopupSource = source;
 };
 
+/**
+ * Refreshes a vector marker's hover tooltip after a marker update.
+ *
+ * Weather layers resend their areas and lines every few seconds, mostly unchanged. Rebinding the
+ * tooltip on every update churned listeners and closed a tooltip the reader was hovering, so it is
+ * only rebound when its text or its popup pairing changed.
+ * While the popup is open its tooltip is deliberately unbound (suppressTooltipWhilePopupOpen), and
+ * it is rebound when the popup closes, so it is left alone until then.
+ */
+export const refreshTooltip = (layer: Layer, options: LiveAtlasPathMarker): void => {
+	const state = layer as Layer & {_liveAtlasTooltipKey?: string},
+		content = options.tooltipHTML || options.tooltip || '',
+		key = `${content}|${!!(options.popup && options.tooltip)}`;
+
+	if (layer.isPopupOpen() || state._liveAtlasTooltipKey === key) {
+		return;
+	}
+
+	layer.closeTooltip();
+	layer.unbindTooltip();
+
+	if (options.tooltip) {
+		layer.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
+	}
+
+	if (options.popup && options.tooltip) {
+		suppressTooltipWhilePopupOpen(layer);
+	}
+
+	state._liveAtlasTooltipKey = key;
+};
+
 export const createPopup = (options: LiveAtlasPathMarker, className: string): HTMLElement => {
 	const popup = document.createElement('span');
 

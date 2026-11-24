@@ -21,7 +21,7 @@ import {LatLngExpression} from "leaflet";
 import {Coordinate, LiveAtlasAreaMarker} from "@/index";
 import LiveAtlasPolyline from "@/leaflet/vector/LiveAtlasPolyline";
 import LiveAtlasPolygon from "@/leaflet/vector/LiveAtlasPolygon";
-import {arePointsEqual, createPopup, isStyleEqual, refreshPopup, suppressTooltipWhilePopupOpen, tooltipOptions} from "@/util/paths";
+import {arePointsEqual, createPopup, isStyleEqual, refreshPopup, refreshTooltip} from "@/util/paths";
 
 /**
  * Creates a {@link LiveAtlasPolyline} or {@link LiveAtlasPolygon} with the given options
@@ -38,13 +38,7 @@ export const createAreaLayer = (options: LiveAtlasAreaMarker, converter: Functio
 		area.bindPopup(() => createPopup(options, 'AreaPopup'));
 	}
 
-	if (options.tooltip) {
-		area.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
-	}
-
-	if (options.popup && options.tooltip) {
-		suppressTooltipWhilePopupOpen(area);
-	}
+	refreshTooltip(area, options);
 
 	return area;
 };
@@ -79,20 +73,7 @@ export const updateAreaLayer = (area: LiveAtlasPolyline | LiveAtlasPolygon | und
 
 	refreshPopup(area, options.popup, () => createPopup(options, 'AreaPopup'));
 
-	// While the popup is open its tooltip is deliberately unbound (suppressTooltipWhilePopupOpen),
-	// and it is rebound when the popup closes, so leave the tooltip alone until then.
-	if (!area.isPopupOpen()) {
-		area.closeTooltip();
-		area.unbindTooltip();
-
-		if (options.tooltip) {
-			area.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
-		}
-
-		if (options.popup && options.tooltip) {
-			suppressTooltipWhilePopupOpen(area);
-		}
-	}
+	refreshTooltip(area, options);
 
 	if(dirty) {
 		area.redraw();

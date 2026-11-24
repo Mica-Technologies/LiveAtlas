@@ -31,6 +31,14 @@ import {
 	Map, TileLayer,
 } from 'leaflet';
 import {useStore} from "@/store";
+import {watch, WatchStopHandle} from "vue";
+import {markersFetching, pendingMarkerCount} from "@/util/markerVisibility";
+
+/** Loader id used for marker loading, which has no Leaflet layer of its own. */
+const MARKERS_LOADER = -1;
+
+/** Shown beside the indicator while markers load. Not configurable: existing configs don't have it. */
+const MARKERS_LOADING_LABEL = 'Loading markers…';
 
 export interface LoadingControlOptions extends ControlOptions {
 	delayIndicator?: number;
@@ -45,12 +53,17 @@ export class LoadingControl extends Control {
 	private _dataLoaders: Set<number> = new Set();
 	private readonly _loadingIndicator: HTMLDivElement;
 	private _delayIndicatorTimeout: null | ReturnType<typeof setTimeout> = null;
+	private readonly _label: HTMLSpanElement;
+	private _unwatchMarkers?: WatchStopHandle;
+	private _shown = false;
 
 	constructor(options: LoadingControlOptions) {
 		super(options);
 
 		this._loadingIndicator = DomUtil.create('div',
 			'leaflet-control-button leaflet-control-loading') as HTMLDivElement;
+		this._label = DomUtil.create('span', 'leaflet-control-loading__label') as HTMLSpanElement;
+		this._label.textContent = MARKERS_LOADING_LABEL;
 	}
 
 	onAdd(map: Map) {
@@ -60,14 +73,30 @@ export class LoadingControl extends Control {
 		<svg class="svg-icon">
 		  <use xlink:href="#icon--loading" />
 		</svg>`;
+		this._label.hidden = true;
+		this._loadingIndicator.appendChild(this._label);
 
 		this._addLayerListeners(map);
 		this._addMapListeners(map);
+
+		// Markers are fetched and then added to the map a few at a time, so say so while that happens
+		this._unwatchMarkers = watch([markersFetching, pendingMarkerCount], ([fetching, pending]) => {
+			const loading = fetching || pending > 0;
+
+			this._label.hidden = !loading;
+
+			if(loading) {
+				this.addLoader(MARKERS_LOADER);
+			} else {
+				this.removeLoader(MARKERS_LOADER);
+			}
+		}, {immediate: true});
 
 		return this._loadingIndicator;
 	}
 
 	onRemove(map: Map) {
+		this._unwatchMarkers?.();
 		this._removeLayerListeners(map);
 		this._removeMapListeners(map);
 	}
@@ -89,7 +118,10 @@ export class LoadingControl extends Control {
 	}
 
 	removeLoader(id: number) {
-		this._dataLoaders.delete(id);
+		if(!this._dataLoaders.delete(id)) {
+			return;
+		}
+
 		this.updateIndicator();
 
 		// If removing this loader means we're in no danger of loading,
@@ -118,12 +150,20 @@ export class LoadingControl extends Control {
 		return this._dataLoaders.size;
 	}
 
+	// Only touch the DOM when the state changes: this runs for every layer removed from the map,
+	// and rewriting the attribute each time made the browser restyle the page thousands of times
 	_showIndicator() {
-		this._loadingIndicator.hidden = false;
+		if(!this._shown) {
+			this._loadingIndicator.hidden = false;
+			this._shown = true;
+		}
 	}
 
 	_hideIndicator() {
-		this._loadingIndicator.hidden = true;
+		if(this._shown) {
+			this._loadingIndicator.hidden = true;
+			this._shown = false;
+		}
 	}
 
 	_handleLoading(e: LeafletEvent) {

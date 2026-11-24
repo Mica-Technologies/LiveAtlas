@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-import {ComputedRef, computed, watch} from "vue";
+import {ComputedRef, computed, watch, WatchStopHandle} from "vue";
 import {Layer} from "leaflet";
 import {
 	LiveAtlasAreaMarker,
@@ -48,6 +48,7 @@ export enum LiveAtlasMarkerType {
 
 let updateFrame = 0;
 let pendingUpdates: ComputedRef;
+let stopWatching: WatchStopHandle | undefined;
 
 const updateHandlers: Set<LiveAtlasMarkerUpdateCallback> = new Set();
 const setUpdateHandlers: { [key:string]: Set<LiveAtlasMarkerUpdateCallback>} = {};
@@ -58,9 +59,11 @@ const setUpdateHandlers: { [key:string]: Set<LiveAtlasMarkerUpdateCallback>} = {
 export const startUpdateHandling = () => {
 	const store = useStore();
 
+	// Called again on each server or world change, so drop the previous watcher rather than adding one
+	stopWatching?.();
 	pendingUpdates = computed(() => store.state.pendingMarkerUpdates.length);
 
-	watch(pendingUpdates, (newValue, oldValue) => {
+	stopWatching = watch(pendingUpdates, (newValue, oldValue) => {
 		if(newValue && newValue > 0 && oldValue === 0 && !updateFrame) {
 			updateFrame = requestAnimationFrame(() => handlePendingUpdates());
 		}
@@ -133,23 +136,31 @@ const handlePendingUpdates = async () => {
 	const store = useStore(),
 		start = performance.now();
 
-	do {
-		const updates = await store.dispatch(ActionTypes.POP_MARKER_UPDATES, UPDATE_BATCH);
+	// A handler that throws must not stop marker updates for good: the next frame is always
+	// scheduled (or the frame id cleared, so new updates start a frame again)
+	try {
+		do {
+			const updates = await store.dispatch(ActionTypes.POP_MARKER_UPDATES, UPDATE_BATCH);
 
-		for(const update of updates) {
-			updateHandlers.forEach(callback => callback(update));
+			for(const update of updates) {
+				const handle = (callback: LiveAtlasMarkerUpdateCallback) => {
+					try {
+						callback(update);
+					} catch(e) {
+						console.error('Failed to apply marker update', update, e);
+					}
+				};
 
-			if(setUpdateHandlers[update.set]) {
-				setUpdateHandlers[update.set].forEach(callback => callback(update));
+				updateHandlers.forEach(handle);
+				setUpdateHandlers[update.set]?.forEach(handle);
 			}
+		} while(pendingUpdates.value && performance.now() - start < UPDATE_FRAME_BUDGET_MS);
+	} finally {
+		if(pendingUpdates.value) {
+			updateFrame = requestAnimationFrame(() => handlePendingUpdates());
+		} else {
+			updateFrame = 0;
 		}
-	} while(pendingUpdates.value && performance.now() - start < UPDATE_FRAME_BUDGET_MS);
-
-	if(pendingUpdates.value) {
-		// eslint-disable-next-line no-unused-vars
-		updateFrame = requestAnimationFrame(() => handlePendingUpdates());
-	} else {
-		updateFrame = 0;
 	}
 };
 
@@ -188,14 +199,30 @@ export const createMarkerLayer = (options: LiveAtlasMarker, converter: Function)
  * @see updateLineLayer
  */
 export const updateMarkerLayer = (marker: Layer | undefined, options: LiveAtlasMarker, converter: Function): Layer => {
+	let layer: Layer | undefined;
+
 	switch(options.type) {
 		case LiveAtlasMarkerType.POINT:
-			return updatePointLayer(marker as GenericMarker, options as LiveAtlasPointMarker, converter);
+			layer = updatePointLayer(marker as GenericMarker, options as LiveAtlasPointMarker, converter);
+			break;
 		case LiveAtlasMarkerType.AREA:
-			return updateAreaLayer(marker as LiveAtlasPolygon | LiveAtlasPolyline, options as LiveAtlasAreaMarker, converter);
+			layer = updateAreaLayer(marker as LiveAtlasPolygon | LiveAtlasPolyline, options as LiveAtlasAreaMarker, converter);
+			break;
 		case LiveAtlasMarkerType.LINE:
-			return updateLineLayer(marker as LiveAtlasPolyline, options as LiveAtlasLineMarker, converter);
+			layer = updateLineLayer(marker as LiveAtlasPolyline, options as LiveAtlasLineMarker, converter);
+			break;
 		case LiveAtlasMarkerType.CIRCLE:
-			return updateCircleLayer(marker as LiveAtlasPolyline | LiveAtlasPolygon, options as LiveAtlasCircleMarker, converter);
+			layer = updateCircleLayer(marker as LiveAtlasPolyline | LiveAtlasPolygon, options as LiveAtlasCircleMarker, converter);
+			break;
 	}
+
+	// The zoom limits can change too, and the layer group reads them from the layer's options
+	const layerOptions = (layer as any)?.options;
+
+	if(layerOptions) {
+		layerOptions.minZoom = options.minZoom;
+		layerOptions.maxZoom = options.maxZoom;
+	}
+
+	return layer as Layer;
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {MarkerOptions, Marker, LatLngExpression, Icon, Map} from 'leaflet';
+import {MarkerOptions, Marker, LatLngExpression, Icon, Map, Point} from 'leaflet';
 import {LiveAtlasPointMarker} from "@/index";
 import {GenericIcon} from "@/leaflet/icon/GenericIcon";
 
@@ -43,6 +43,22 @@ export class GenericMarker extends Marker {
 	}
 
 	// noinspection JSUnusedGlobalSymbols
+	// Leaflet positions icons with a CSS transform. Every transformed element gets its own paint
+	// property node, and Chrome's compositor walks all of them whenever anything repaints: with a
+	// few thousand markers on the map that cost seconds per frame, even while idle. Plain left/top
+	// positioning keeps the icons in their pane's paint chunk; the pane itself still moves as one
+	// during pans.
+	_setPos(pos: Point) {
+		const icon = (this as any)._icon as HTMLElement | undefined;
+
+		if(icon) {
+			(icon as any)._leaflet_pos = pos;
+			icon.style.left = `${pos.x}px`;
+			icon.style.top = `${pos.y}px`;
+		}
+	}
+
+	// noinspection JSUnusedGlobalSymbols
 	_resetZIndex() {
 		//Don't change the zindex
 	}
@@ -56,7 +72,7 @@ export class GenericMarker extends Marker {
 	}
 
 	removeLabel(): void {
-		this.options.icon.createLabel();
+		this.options.icon.removeLabel();
 	}
 
 	onRemove(map: Map): this {

@@ -55,6 +55,8 @@ export default defineComponent({
 				priority: props.markerSet.priority,
 			});
 
+		let shown = {label: props.markerSet.label, priority: props.markerSet.priority, hidden: props.markerSet.hidden};
+
 		watch(props.markerSet, newValue => {
 			if(newValue && layerGroup) {
 				layerGroup.update({
@@ -65,13 +67,29 @@ export default defineComponent({
 					priority: props.markerSet.priority,
 				});
 
-				if(newValue.hidden) {
-					props.leaflet.getLayerManager()
-						.addHiddenLayer(layerGroup, newValue.label, props.markerSet.priority);
-				} else {
-					props.leaflet.getLayerManager()
-						.addLayer(layerGroup, true, newValue.label, props.markerSet.priority);
+				// Only touch the layer control when something it shows changed: re-adding the set
+				// rebuilt the control and switched the set back on after the user had hidden it.
+				// A change to the server's default visibility is applied; otherwise the user's choice stays.
+				const hiddenChanged = newValue.hidden !== shown.hidden,
+					controlChanged = newValue.label !== shown.label || newValue.priority !== shown.priority;
+
+				if(hiddenChanged || controlChanged) {
+					const visible = hiddenChanged ? !newValue.hidden : props.leaflet.hasLayer(layerGroup),
+						manager = props.leaflet.getLayerManager();
+
+					if(visible) {
+						manager.addLayer(layerGroup, true, newValue.label, newValue.priority);
+					} else {
+						props.leaflet.removeLayer(layerGroup);
+						manager.addHiddenLayer(layerGroup, newValue.label, newValue.priority);
+					}
+
+					if(hiddenChanged) {
+						reportVisibility(visible);
+					}
 				}
+
+				shown = {label: newValue.label, priority: newValue.priority, hidden: newValue.hidden};
 			}
 		}, {deep: true});
 

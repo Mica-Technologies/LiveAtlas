@@ -20,7 +20,7 @@
 import {LatLngExpression} from "leaflet";
 import {Coordinate, LiveAtlasLineMarker} from "@/index";
 import LiveAtlasPolyline from "@/leaflet/vector/LiveAtlasPolyline";
-import {createPopup, refreshPopup, suppressTooltipWhilePopupOpen, tooltipOptions} from "@/util/paths";
+import {arePointsEqual, createPopup, isStyleEqual, refreshPopup, refreshTooltip} from "@/util/paths";
 
 /**
  * Creates a {@link LiveAtlasPolyline} with the given options
@@ -36,13 +36,7 @@ export const createLineLayer = (options: LiveAtlasLineMarker, converter: Functio
 		line.bindPopup(() => createPopup(options, 'LinePopup'));
 	}
 
-	if (options.tooltip) {
-		line.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
-	}
-
-	if (options.popup && options.tooltip) {
-		suppressTooltipWhilePopupOpen(line);
-	}
+	refreshTooltip(line, options);
 
 	return line;
 };
@@ -61,24 +55,26 @@ export const updateLineLayer = (line: LiveAtlasPolyline | undefined, options: Li
 
 	refreshPopup(line, options.popup, () => createPopup(options, 'LinePopup'));
 
-	// While the popup is open its tooltip is deliberately unbound (suppressTooltipWhilePopupOpen),
-	// and it is rebound when the popup closes, so leave the tooltip alone until then.
-	if (!line.isPopupOpen()) {
-		line.closeTooltip();
-		line.unbindTooltip();
+	refreshTooltip(line, options);
 
-		if (options.tooltip) {
-			line.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
-		}
+	// Weather layers resend every line every few seconds, mostly unchanged, so only touch what
+	// changed rather than restyling and redrawing each one.
+	const points = options.points.map(projectPointsMapCallback, converter) as LatLngExpression[];
+	let dirty = false;
 
-		if (options.popup && options.tooltip) {
-			suppressTooltipWhilePopupOpen(line);
-		}
+	if(!isStyleEqual(line.options, options.style)) {
+		line.setStyle(options.style);
+		dirty = true;
 	}
 
-	line.setStyle(options.style);
-	line.setLatLngs(options.points.map(projectPointsMapCallback, converter));
-	line.redraw();
+	if(!arePointsEqual(line.getLatLngs() as LatLngExpression[], points)) {
+		line.setLatLngs(points);
+		dirty = true;
+	}
+
+	if(dirty) {
+		line.redraw();
+	}
 
 	return line;
 }

@@ -70,13 +70,14 @@ export default defineComponent({
 		// copy stands alone. The LiveAtlas map keys markers by their
 		// kind-prefixed id; pending entries store the unprefixed id, so
 		// strip before comparing.
-		const isSuppressed = (markerId: string): boolean => {
-			const serverId = stripLiveAtlasIdPrefix(markerId);
-			return store.state.localEditor.markers.some(m =>
-				m.id === serverId
-				&& (m.origin === 'edit' || m.origin === 'delete')
-				&& (m.originalSetId === props.set.id || m.setId === props.set.id));
-		};
+		// Looked up once per marker, so keep the ids in a set rather than scanning the editor's list
+		const suppressedIds = computed(() => new Set(store.state.localEditor.markers
+			.filter(m => (m.origin === 'edit' || m.origin === 'delete')
+				&& (m.originalSetId === props.set.id || m.setId === props.set.id))
+			.map(m => m.id)));
+
+		const isSuppressed = (markerId: string): boolean =>
+			suppressedIds.value.has(stripLiveAtlasIdPrefix(markerId));
 
 		const createMarkers = () => {
 			nonReactiveState.markers.get(props.set.id)!.forEach((area: LiveAtlasMarker, id: string) => {
@@ -114,6 +115,9 @@ export default defineComponent({
 				if(!isSuppressed(update.id)) {
 					if(!layers.has(update.id)) {
 						props.layerGroup.addLayer(layer);
+					} else {
+						// It may have moved into or out of view, or had its zoom limits changed
+						props.layerGroup.refreshLayer(layer);
 					}
 				}
 
@@ -151,9 +155,11 @@ export default defineComponent({
 		watch(() => store.state.pingTarget, (target) => {
 			if(!target || target.setId !== props.set.id) return;
 			const layer = layers.get(target.markerId) as Layer & {getElement?: () => HTMLElement | SVGElement | undefined} | undefined;
-			const el = layer?.getElement?.();
-			if(!el) return;
 			window.setTimeout(() => {
+				// Look the element up once the pan has finished: markers away from the view aren't
+				// on the map until it gets there
+				const el = layer?.getElement?.();
+				if(!el) return;
 				el.classList.add('marker--ping');
 				window.setTimeout(() => el.classList.remove('marker--ping'), 1500);
 			}, 450);
@@ -168,6 +174,9 @@ export default defineComponent({
 					for (const [id, area] of nonReactiveState.markers.get(props.set.id)!) {
 						updateMarkerLayer(layers.get(id), area, converter);
 					}
+
+					// The map's own view change has already culled markers by their old positions
+					props.layerGroup.refresh();
 				}
 			}
 		});

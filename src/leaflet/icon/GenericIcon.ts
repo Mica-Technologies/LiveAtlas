@@ -56,13 +56,19 @@ export class GenericIcon extends Layer implements Icon<GenericIconOptions> {
 	private _label?: HTMLSpanElement;
 	private _container?: HTMLDivElement;
 	private _labelCreated: boolean = false;
+	// What the image currently shows. img.src reads back as an absolute URL, so comparing it with a
+	// relative icon URL never matched and every marker update reloaded the image.
+	private _shownIconUrl?: string;
+	private _shownSize?: string;
 	private _onHover: EventListener = () => {
 		this.createLabel();
 	};
 
 	constructor(options: GenericIconOptions) {
 		super(options as LayerOptions);
-		Util.setOptions(this, Object.assign(defaultOptions, options));
+		// Copy the defaults: assigning into them would leak one icon's options, such as its size,
+		// into every icon created after it
+		Util.setOptions(this, Object.assign({}, defaultOptions, options));
 	}
 
 	// Upstream Leaflet's Marker._initIcon calls icon.createShadow() while
@@ -80,6 +86,8 @@ export class GenericIcon extends Layer implements Icon<GenericIconOptions> {
 
 		const div = markerContainer.cloneNode(false) as HTMLDivElement;
 		this._image = markerIcon.cloneNode(false) as HTMLImageElement;
+		this._shownIconUrl = undefined;
+		this._shownSize = undefined;
 
 		div.appendChild(this._image);
 		div.classList.add('marker', 'leaflet-marker-icon');
@@ -142,20 +150,28 @@ export class GenericIcon extends Layer implements Icon<GenericIconOptions> {
 				marginLeft = iconAnchor ? -iconAnchor.x : iconSize ? -(iconSize.x / 2) : 0,
 				marginTop = iconAnchor ? -iconAnchor.y : iconSize ? -(iconSize.y / 2) : 0;
 
-			if(iconSize) {
-				this._image.width = iconSize.x;
-				this._image.height = iconSize.y;
-			} else {
-				this._image.removeAttribute('width');
-				this._image.removeAttribute('height');
+			// Marker updates arrive every few seconds and rarely change the icon, so only touch the
+			// DOM when something differs: each write makes the browser restyle the marker.
+			const size = `${iconSize?.x},${iconSize?.y},${marginLeft},${marginTop}`;
+
+			if(size !== this._shownSize) {
+				if(iconSize) {
+					this._image.width = iconSize.x;
+					this._image.height = iconSize.y;
+				} else {
+					this._image.removeAttribute('width');
+					this._image.removeAttribute('height');
+				}
+
+				this._container.style.marginLeft = marginLeft ? `${marginLeft}px` : '';
+				this._container.style.marginTop = marginTop ? `${marginTop}px` : '';
+				this._container.style.height = iconSize ? `${iconSize.y}px` : 'auto';
+				this._shownSize = size;
 			}
 
-			this._container.style.marginLeft = marginLeft ? `${marginLeft}px` : '';
-			this._container.style.marginTop = marginTop ? `${marginTop}px` : '';
-			this._container.style.height = iconSize ? `${iconSize.y}px` : 'auto';
-
-			if(this._image.src !== this.options.iconUrl) {
+			if(this._shownIconUrl !== this.options.iconUrl) {
 				this._image.src = this.options.iconUrl;
+				this._shownIconUrl = this.options.iconUrl;
 			}
 		}
 

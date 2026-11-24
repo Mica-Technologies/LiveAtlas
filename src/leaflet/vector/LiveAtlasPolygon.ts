@@ -27,5 +27,8 @@ export default class LiveAtlasPolygon extends Polygon {
 
 	constructor(latlngs: LatLngExpression[] | LatLngExpression[][] | LatLngExpression[][][], options: LiveAtlasPathMarker) {
 		super(latlngs, options.style);
+
+		this.options.minZoom = options.minZoom;
+		this.options.maxZoom = options.maxZoom;
 	}
 }

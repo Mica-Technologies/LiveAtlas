@@ -59,10 +59,14 @@ import ChatControl from "@/components/map/control/ChatControl.vue";
 import LogoControl from "@/components/map/control/LogoControl.vue";
 import LiveAtlasLeafletMap from "@/leaflet/LiveAtlasLeafletMap";
 import {LoadingControl} from "@/leaflet/control/LoadingControl";
+import {markersFetching} from "@/util/markerVisibility";
 import MapContextMenu from "@/components/map/MapContextMenu.vue";
 import LoginControl from "@/components/map/control/LoginControl.vue";
 import TileLayerOverlay from "@/components/map/layer/TileLayerOverlay.vue";
 import Weather2RadarLayer from "@/components/map/layer/Weather2RadarLayer.vue";
+
+// Bumped per world load, so an older load finishing late doesn't hide the indicator early
+let markerLoad = 0;
 
 export default defineComponent({
 	components: {
@@ -202,7 +206,17 @@ export default defineComponent({
 			const store = useStore();
 
 			if(newValue) {
-				store.state.currentMapProvider!.populateWorld(newValue);
+				// Shows the loading indicator while the world's markers are fetched and processed, which
+				// can take a while on a server with thousands of them
+				const load = ++markerLoad;
+				markersFetching.value = true;
+				store.state.currentMapProvider!.populateWorld(newValue)
+					.catch(e => console.warn('Failed to load markers', e))
+					.finally(() => {
+						if(load === markerLoad) {
+							markersFetching.value = false;
+						}
+					});
 				let viewTarget = this.scheduledView || {} as LiveAtlasMapViewTarget;
 
 				// Abort if follow target is present, to avoid panning twice
@@ -277,7 +291,9 @@ export default defineComponent({
 			attributionControl: false,
 			crs: CRS.Simple,
 			worldCopyJump: false,
-			// markerZoomAnimation: false,
+			// Animating every marker icon through each zoom costs seconds per zoom with a few thousand
+			// markers on screen. They are hidden for the animation instead and placed once it ends.
+			markerZoomAnimation: false,
 		})) as LiveAtlasLeafletMap;
 
 		window.addEventListener('keydown', this.handleKeydown);

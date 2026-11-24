@@ -71,7 +71,11 @@ export default defineComponent({
 			props.markerSets?.forEach((set) => checkSet(set));
 		};
 
-		const checkSet = (set: LiveAtlasMarkerSet) => {
+		const checkSet = (set?: LiveAtlasMarkerSet) => {
+			if(!set) {
+				return;
+			}
+
 			const markers = nonReactiveState.markers.get(set.id),
 				markerCount = markers ? markers.size : 0;
 
@@ -79,7 +83,7 @@ export default defineComponent({
 		};
 
 		const handleUpdate = (update: DynmapMarkerUpdate) => {
-			checkSet(props.markerSets.get(update.set)!);
+			checkSet(props.markerSets.get(update.set));
 		}
 
 		const onSubmenuKeydown = (e: KeyboardEvent) => {

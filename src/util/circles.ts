@@ -21,7 +21,7 @@ import {LatLngExpression} from "leaflet";
 import {LiveAtlasCircleMarker} from "@/index";
 import LiveAtlasPolyline from "@/leaflet/vector/LiveAtlasPolyline";
 import LiveAtlasPolygon from "@/leaflet/vector/LiveAtlasPolygon";
-import {arePointsEqual, createPopup, isStyleEqual, refreshPopup, suppressTooltipWhilePopupOpen, tooltipOptions} from "@/util/paths";
+import {arePointsEqual, createPopup, isStyleEqual, refreshPopup, refreshTooltip} from "@/util/paths";
 
 /**
  * Creates a {@link LiveAtlasPolygon} with the given options
@@ -38,13 +38,7 @@ export const createCircleLayer = (options: LiveAtlasCircleMarker, converter: Fun
 		circle.bindPopup(() => createPopup(options, 'CirclePopup'));
 	}
 
-	if (options.tooltip) {
-		circle.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
-	}
-
-	if (options.popup && options.tooltip) {
-		suppressTooltipWhilePopupOpen(circle);
-	}
+	refreshTooltip(circle, options);
 
 	return circle;
 };
@@ -65,20 +59,7 @@ export const updateCircleLayer = (circle: LiveAtlasPolyline | LiveAtlasPolygon |
 
 	refreshPopup(circle, options.popup, () => createPopup(options, 'CirclePopup'));
 
-	// While the popup is open its tooltip is deliberately unbound (suppressTooltipWhilePopupOpen),
-	// and it is rebound when the popup closes, so leave the tooltip alone until then.
-	if (!circle.isPopupOpen()) {
-		circle.closeTooltip();
-		circle.unbindTooltip();
-
-		if (options.tooltip) {
-			circle.bindTooltip(() => options.tooltipHTML || options.tooltip, tooltipOptions);
-		}
-
-		if (options.popup && options.tooltip) {
-			suppressTooltipWhilePopupOpen(circle);
-		}
-	}
+	refreshTooltip(circle, options);
 
 	// Rebuilding and redrawing the 360-point outline on every update is expensive for markers that
 	// update often; only touch what changed, as updateAreaLayer does.
