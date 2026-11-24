@@ -30,10 +30,9 @@ import {DynmapMarkerUpdate} from "@/dynmap";
 import {useStore} from "@/store";
 import {ActionTypes} from "@/store/action-types";
 import {createCircleLayer, updateCircleLayer} from "@/util/circles";
-import {createPointLayer, updatePointLayer} from "@/util/points";
+import {createPointLayer, PointLayer, updatePointLayer} from "@/util/points";
 import {createAreaLayer, updateAreaLayer} from "@/util/areas";
 import {createLineLayer, updateLineLayer} from "@/util/lines";
-import {GenericMarker} from "@/leaflet/marker/GenericMarker";
 import LiveAtlasPolygon from "@/leaflet/vector/LiveAtlasPolygon";
 import LiveAtlasPolyline from "@/leaflet/vector/LiveAtlasPolyline";
 
@@ -174,10 +173,10 @@ const handlePendingUpdates = async () => {
  * @see createCircleLayer
  * @see createLineLayer
  */
-export const createMarkerLayer = (options: LiveAtlasMarker, converter: Function): Layer => {
+export const createMarkerLayer = (options: LiveAtlasMarker, converter: Function, canvasIcons = false): Layer => {
 	switch(options.type) {
 		case LiveAtlasMarkerType.POINT:
-			return createPointLayer(options as LiveAtlasPointMarker, converter);
+			return createPointLayer(options as LiveAtlasPointMarker, converter, canvasIcons);
 		case LiveAtlasMarkerType.AREA:
 			return createAreaLayer(options as LiveAtlasAreaMarker, converter);
 		case LiveAtlasMarkerType.LINE:
@@ -198,12 +197,12 @@ export const createMarkerLayer = (options: LiveAtlasMarker, converter: Function)
  * @see updateCircleLayer
  * @see updateLineLayer
  */
-export const updateMarkerLayer = (marker: Layer | undefined, options: LiveAtlasMarker, converter: Function): Layer => {
+export const updateMarkerLayer = (marker: Layer | undefined, options: LiveAtlasMarker, converter: Function, canvasIcons = false): Layer => {
 	let layer: Layer | undefined;
 
 	switch(options.type) {
 		case LiveAtlasMarkerType.POINT:
-			layer = updatePointLayer(marker as GenericMarker, options as LiveAtlasPointMarker, converter);
+			layer = updatePointLayer(marker as PointLayer, options as LiveAtlasPointMarker, converter, canvasIcons);
 			break;
 		case LiveAtlasMarkerType.AREA:
 			layer = updateAreaLayer(marker as LiveAtlasPolygon | LiveAtlasPolyline, options as LiveAtlasAreaMarker, converter);

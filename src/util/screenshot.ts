@@ -101,7 +101,23 @@ export const captureMapScreenshot = async (mapEl: HTMLElement): Promise<Screensh
 		}
 	}
 
-	// 3. Point marker icons (label spans are skipped intentionally).
+	// 3. Canvases: areas and lines (Leaflet's canvas renderer) and the shared marker icon canvas,
+	// lowest pane first so icons land on top of the areas beneath them.
+	const paneZ = (el: Element) => parseInt(getComputedStyle(el.closest('.leaflet-pane') || el).zIndex) || 0;
+	const canvases = Array.from(mapEl.querySelectorAll<HTMLCanvasElement>('.leaflet-pane canvas'))
+		.sort((a, b) => paneZ(a) - paneZ(b));
+	for(const layerCanvas of canvases) {
+		const r = layerCanvas.getBoundingClientRect();
+		if(r.width === 0 || r.height === 0) continue;
+		try {
+			ctx.drawImage(layerCanvas, r.left - rect.left, r.top - rect.top, r.width, r.height);
+		} catch {
+			// A canvas holding cross-origin images can't be read back
+			corsTainted = true;
+		}
+	}
+
+	// 4. Point marker icons that are HTML elements (label spans are skipped intentionally).
 	const markerIcons = mapEl.querySelectorAll<HTMLImageElement>(
 		// Marker sets each have their own pane (leaflet-<set>-markers-pane), not Leaflet's marker pane
 		'.leaflet-pane .marker:not(.marker--player) .marker__icon, .leaflet-marker-pane > .leaflet-marker-icon img');

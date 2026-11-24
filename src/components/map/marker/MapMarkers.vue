@@ -79,9 +79,13 @@ export default defineComponent({
 		const isSuppressed = (markerId: string): boolean =>
 			suppressedIds.value.has(stripLiveAtlasIdPrefix(markerId));
 
+		// Point markers are drawn on the shared icon canvas, which stays fast with thousands of them.
+		// Sets whose labels are always shown keep HTML markers, as their labels can hold HTML.
+		const canvasIcons = () => !props.layerGroup.options.showLabels;
+
 		const createMarkers = () => {
 			nonReactiveState.markers.get(props.set.id)!.forEach((area: LiveAtlasMarker, id: string) => {
-				const layer = createMarkerLayer(area, converter);
+				const layer = createMarkerLayer(area, converter, canvasIcons());
 
 				layers.set(id, layer);
 				wireContextMenu(layer, id);
@@ -106,7 +110,7 @@ export default defineComponent({
 			if(update.removed) {
 				deleteMarker(update.id);
 			} else {
-				const layer = updateMarkerLayer(layers.get(update.id), update.payload as LiveAtlasAreaMarker, converter);
+				const layer = updateMarkerLayer(layers.get(update.id), update.payload as LiveAtlasAreaMarker, converter, canvasIcons());
 
 				if(!layers.has(update.id)) {
 					wireContextMenu(layer, update.id);
@@ -154,8 +158,14 @@ export default defineComponent({
 		// and the user actually sees the pulse.
 		watch(() => store.state.pingTarget, (target) => {
 			if(!target || target.setId !== props.set.id) return;
-			const layer = layers.get(target.markerId) as Layer & {getElement?: () => HTMLElement | SVGElement | undefined} | undefined;
+			const layer = layers.get(target.markerId) as Layer & {getElement?: () => HTMLElement | SVGElement | undefined, ping?: () => void} | undefined;
 			window.setTimeout(() => {
+				// Canvas icons have no element: they draw their own highlight
+				if(layer?.ping) {
+					layer.ping();
+					return;
+				}
+
 				// Look the element up once the pan has finished: markers away from the view aren't
 				// on the map until it gets there
 				const el = layer?.getElement?.();
@@ -172,13 +182,24 @@ export default defineComponent({
 					converter = newValue.locationToLatLng.bind(newValue);
 
 					for (const [id, area] of nonReactiveState.markers.get(props.set.id)!) {
-						updateMarkerLayer(layers.get(id), area, converter);
+						updateMarkerLayer(layers.get(id), area, converter, canvasIcons());
 					}
 
 					// The map's own view change has already culled markers by their old positions
 					props.layerGroup.refresh();
 				}
 			}
+		});
+
+		// Switching a set's labels on or off changes which kind of marker it needs, so rebuild them.
+		// The set's layer group has been updated by the time this runs (its watcher is the parent's).
+		watch(() => props.set.showLabels || store.state.components.markers.showLabels, () => {
+			for(const layer of layers.values()) {
+				props.layerGroup.removeLayer(layer);
+			}
+
+			layers.clear();
+			createMarkers();
 		});
 
 		onMounted(() => {

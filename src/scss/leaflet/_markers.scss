@@ -251,6 +251,36 @@
 	}
 }
 
+// Point marker icons drawn on the shared canvas (IconCanvasRenderer). The canvas ignores the mouse:
+// the map hit tests icons itself, so things drawn underneath stay clickable between icons.
+.leaflet-icon-canvas {
+	pointer-events: none;
+}
+
+.leaflet-container.leaflet-icon-canvas--hover {
+	cursor: pointer;
+}
+
+// The label for the hovered canvas icon: positioned at the icon's right edge, centred on it
+.map .marker.marker--canvas-label {
+	position: absolute;
+	display: block;
+	height: 0;
+	pointer-events: none;
+	z-index: 1000;
+
+	&[hidden] {
+		display: none;
+	}
+
+	.marker__label {
+		display: block;
+		left: 0.2rem;
+		top: 0;
+		transform: translateY(-50%);
+	}
+}
+
 // Brief highlight pulse applied when the user clicks a marker in the
 // sidebar list, so they can locate it on the map. Targets both the point
 // marker container (a div) and Leaflet's interactive SVG path elements

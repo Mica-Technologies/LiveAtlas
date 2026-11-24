@@ -16,6 +16,7 @@
 
 import {Layer, Map as LeafletMap, LayerGroup, LayerOptions, Util, Marker, Path, LatLngBounds} from "leaflet";
 import {GenericMarker} from "@/leaflet/marker/GenericMarker";
+import {CanvasIconMarker} from "@/leaflet/marker/CanvasIconMarker";
 import {isInBounds, isVisibleAtZoom, pendingMarkerCount, Bounds} from "@/util/markerVisibility";
 
 export interface LiveAtlasLayerGroupOptions extends LayerOptions {
@@ -43,8 +44,9 @@ const ADD_FRAME_BUDGET_MS = 6;
  * Markers that newly need showing are added a few at a time, nearest the centre of the view first,
  * so a dense area fills in over a few frames instead of freezing the page.
  *
- * Areas, lines and circles are drawn on the shared canvas renderer, which only draws what is in
- * view already, so they are only subject to zoom limits.
+ * Areas, lines, circles and canvas-drawn icons ({@link CanvasIconMarker}) are drawn on canvases
+ * that only draw what is in view already, so they are only subject to zoom limits. The culling
+ * applies to point markers that are HTML elements, which marker sets with always-visible labels use.
  */
 export default class LiveAtlasLayerGroup extends LayerGroup {
 	declare options: LiveAtlasLayerGroupOptions;
@@ -98,6 +100,8 @@ export default class LiveAtlasLayerGroup extends LayerGroup {
 
 		if (layer instanceof Marker) {
 			layer.options.pane = `${this.options.id}-markers`;
+		} else if (layer instanceof CanvasIconMarker) {
+			layer.priority = this.options.priority;
 		} else if (layer instanceof Path) {
 			layer.options.pane = `vectors`;
 		}
@@ -162,6 +166,13 @@ export default class LiveAtlasLayerGroup extends LayerGroup {
 
 		if(options.priority !== this.options.priority) {
 			this.options.priority = options.priority;
+
+			this.eachLayer(layer => {
+				if(layer instanceof CanvasIconMarker) {
+					layer.priority = options.priority;
+					(layer as any)._renderer?.requestRedraw();
+				}
+			});
 
 			if(this._markerPane) {
 				this._markerPane.style.zIndex = (401 + this.options.priority).toString();
