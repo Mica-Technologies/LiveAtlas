@@ -105,8 +105,16 @@ export class CanvasIconMarker extends Layer {
 		return undefined;
 	}
 
-	ping() {
-		this._renderer?.ping(this);
+	/**
+	 * Draws a ring at the marker. The map can be passed for a marker that isn't on it right now,
+	 * such as one whose set is hidden at the current zoom.
+	 */
+	ping(map?: LeafletMap) {
+		const target = this._map || map;
+
+		if(target) {
+			IconCanvasRenderer.for(target).ping(this._latLng);
+		}
 	}
 
 	/** Position on the map's layer, projected once per zoom level. */

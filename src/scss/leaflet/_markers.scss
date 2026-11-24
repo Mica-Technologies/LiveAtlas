@@ -257,7 +257,8 @@
 	pointer-events: none;
 }
 
-.leaflet-container.leaflet-icon-canvas--hover {
+// Specific enough to beat the map's own cursor: default, scoped in Map.vue
+.map.leaflet-container.leaflet-icon-canvas--hover {
 	cursor: pointer;
 }
 

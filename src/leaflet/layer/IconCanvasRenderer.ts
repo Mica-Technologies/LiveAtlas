@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-import {DomUtil, Map as LeafletMap, Point, Renderer} from "leaflet";
+import {DomUtil, LatLng, Map as LeafletMap, Point, Renderer} from "leaflet";
 import type {CanvasIconMarker} from "@/leaflet/marker/CanvasIconMarker";
 
 /** Pane holding the icon canvas. Sits where the marker set panes start, below players and popups. */
@@ -63,7 +63,7 @@ export class IconCanvasRenderer extends Renderer {
 	private _hovered?: CanvasIconMarker;
 	private _label?: HTMLDivElement;
 	private _labelText?: HTMLSpanElement;
-	private _ping?: {icon: CanvasIconMarker, start: number};
+	private _ping?: {latLng: LatLng, start: number};
 
 	private static readonly _images: Map<string, LoadedImage> = new Map();
 	private static readonly _renderers: WeakMap<LeafletMap, IconCanvasRenderer> = new WeakMap();
@@ -100,9 +100,13 @@ export class IconCanvasRenderer extends Renderer {
 		}
 	}
 
-	/** Briefly highlights the given icon, so it can be found after being picked in the sidebar. */
-	ping(icon: CanvasIconMarker) {
-		this._ping = {icon, start: performance.now()};
+	/**
+	 * Briefly draws a ring at the given position, so a marker picked in the sidebar can be found.
+	 * It goes by position rather than by icon, so it shows even when the marker's set is hidden at
+	 * the current zoom.
+	 */
+	ping(latLng: LatLng) {
+		this._ping = {latLng, start: performance.now()};
 		this.requestRedraw();
 	}
 
@@ -150,6 +154,9 @@ export class IconCanvasRenderer extends Renderer {
 		container.addEventListener('mousemove', this._onMouseMove, true);
 		container.addEventListener('mouseleave', this._onMouseLeave);
 		map.on('popupopen movestart zoomstart', this._hideLabel, this);
+		// A move needn't start with movestart (a view set from the URL), and the pointer is no longer
+		// over the same icon afterwards: forget the hover until the mouse moves again
+		map.on('moveend zoomend viewreset', this._clearHover, this);
 		IconCanvasRenderer._live.add(this);
 
 		return this;
@@ -162,6 +169,7 @@ export class IconCanvasRenderer extends Renderer {
 		container.removeEventListener('mousemove', this._onMouseMove, true);
 		container.removeEventListener('mouseleave', this._onMouseLeave);
 		map.off('popupopen movestart zoomstart', this._hideLabel, this);
+		map.off('moveend zoomend viewreset', this._clearHover, this);
 		IconCanvasRenderer._live.delete(this);
 		IconCanvasRenderer._renderers.delete(map);
 		this._setHovered(undefined);
@@ -248,6 +256,12 @@ export class IconCanvasRenderer extends Renderer {
 
 		this._drawn = drawn;
 		this._drawPing(ctx);
+
+		// Icons may have moved or gone with this redraw (a marker update, a move): keep the hover
+		// label with its icon, or drop it
+		if(this._hovered) {
+			this._showLabel(this._hovered);
+		}
 	}
 
 	private _drawPing(ctx: CanvasRenderingContext2D) {
@@ -255,27 +269,24 @@ export class IconCanvasRenderer extends Renderer {
 			return;
 		}
 
-		const elapsed = performance.now() - this._ping.start,
-			entry = this._drawn.find(d => d.icon === this._ping!.icon);
+		const elapsed = performance.now() - this._ping.start;
 
-		if(elapsed > PING_DURATION_MS || !this._icons.has(this._ping.icon)) {
+		if(elapsed > PING_DURATION_MS) {
 			this._ping = undefined;
 			return;
 		}
 
-		if(entry) {
-			const progress = elapsed / PING_DURATION_MS,
-				alpha = progress < 0.15 ? progress / 0.15 : 1 - (progress - 0.15) / 0.85;
+		const progress = elapsed / PING_DURATION_MS,
+			alpha = progress < 0.15 ? progress / 0.15 : 1 - (progress - 0.15) / 0.85,
+			centre = this._map.latLngToLayerPoint(this._ping.latLng);
 
-			ctx.save();
-			ctx.strokeStyle = `rgba(255, 220, 80, ${alpha})`;
-			ctx.lineWidth = 3;
-			ctx.beginPath();
-			ctx.arc(entry.x + entry.width / 2, entry.y + entry.height / 2,
-				Math.max(entry.width, entry.height) / 2 + 4 + 10 * progress, 0, Math.PI * 2);
-			ctx.stroke();
-			ctx.restore();
-		}
+		ctx.save();
+		ctx.strokeStyle = `rgba(255, 220, 80, ${alpha})`;
+		ctx.lineWidth = 3;
+		ctx.beginPath();
+		ctx.arc(centre.x, centre.y, 12 + 10 * progress, 0, Math.PI * 2);
+		ctx.stroke();
+		ctx.restore();
 
 		this.requestRedraw();
 	}
@@ -377,8 +388,17 @@ export class IconCanvasRenderer extends Renderer {
 
 	private _onMouseLeave = () => this._setHovered(undefined);
 
+	private _clearHover() {
+		this._setHovered(undefined);
+	}
+
 	private _setHovered(icon?: CanvasIconMarker) {
 		if(icon === this._hovered) {
+			// Still over the same icon: bring its label back if a popup or a move hid it meanwhile
+			if(icon && this._label?.hidden) {
+				this._showLabel(icon);
+			}
+
 			return;
 		}
 

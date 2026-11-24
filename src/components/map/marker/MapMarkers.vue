@@ -158,11 +158,11 @@ export default defineComponent({
 		// and the user actually sees the pulse.
 		watch(() => store.state.pingTarget, (target) => {
 			if(!target || target.setId !== props.set.id) return;
-			const layer = layers.get(target.markerId) as Layer & {getElement?: () => HTMLElement | SVGElement | undefined, ping?: () => void} | undefined;
+			const layer = layers.get(target.markerId) as Layer & {getElement?: () => HTMLElement | SVGElement | undefined, ping?: (map?: unknown) => void} | undefined;
 			window.setTimeout(() => {
 				// Canvas icons have no element: they draw their own highlight
 				if(layer?.ping) {
-					layer.ping();
+					layer.ping((props.layerGroup as any)._map);
 					return;
 				}
 
